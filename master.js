@@ -1,3 +1,17 @@
+
+// utilities
+
+function getRandomInt(min,max) {
+    return Math.floor(Math.random() * (max-min))  + min;
+}
+
+function getRandomNumber(min,max) {
+    return Math.random() * (max-min) + min
+}
+
+
+// Main classes
+
 class Cell {
     constructor(index, richness, neighbors) {
         this.index = index
@@ -13,6 +27,7 @@ class Tree {
         this.isDormant = isDormant
     }
 }
+
 
 const WAIT = 'WAIT'
 const SEED = 'SEED'
@@ -45,25 +60,92 @@ class Action {
     }
 }
 
+
 class Game {
     constructor() {
-        this.round = 0
-        this.nutrients = 0
-        this.cells = []
-        this.possibleActions = []
-        this.trees = []
-        this.mySun = 0
-        this.myScore = 0
-        this.opponentsSun = 0
-        this.opponentScore = 0
-        this.opponentIsWaiting = 0
+        // inputs :
+        this.round = 0;
+        this.nutrients = 0;
+        this.cells = [];
+        this.possibleActions = [];
+        this.trees = [];
+        this.mySun = 0;
+        this.myScore = 0;
+        this.opponentsSun = 0;
+        this.opponentScore = 0;
+        this.opponentIsWaiting = 0;
+
+        // vars :
+        this.max_rec = 10;
+
     }
-    getNextAction() {
+
+    getBestSeed() {
+        const bestLoc = {
+            index:-1,
+            richness:-1,
+            target: -1,
+        }
+        let is_good = true;
+
+        this.trees.forEach(tree =>{
+            if (tree.isMine){
+                this.cells[tree.cellIndex].neighbors.forEach(spot =>{
+                    if(spot !== -1 ){
+                        if(this.cells[spot].richness > bestLoc.richness){
+                            bestLoc.index = tree.cellIndex;
+                            bestLoc.target = spot;
+                            bestLoc.richness = this.cells[spot].richness;
+                        }
+                    }
+                });
+            }
+        });
+
+        if(bestLoc.index === -1){
+            is_good = false;
+        }
+
+        return {
+            is_good: is_good,
+            cellIndex: bestLoc.index,
+            targetIndex: bestLoc.target,
+        };
+    }
+
+    getBestGrow() {
         const bestTree = {
             index:-1,
             richness:-1,
         }
-        let res;
+        let is_good = true;
+
+        this.trees.forEach(tree =>{
+            if(tree.isMine && this.cells[tree.cellIndex].richness > bestTree.richness && tree.size < 3){
+                bestTree.index = tree.cellIndex;
+                bestTree.size = tree.size;
+                bestTree.richness = this.cells[tree.cellIndex].richness;
+            }
+        });
+
+        console.error(bestTree);
+
+        if(bestTree.index === -1){
+            is_good = false;
+        }
+
+        return {
+            is_good: is_good,
+            cellIndex: bestTree.index
+        };
+    }
+
+    getBestComplete() {
+        const bestTree = {
+            index:-1,
+            richness:-1,
+        }
+        let is_good = true;
 
         this.trees.forEach(tree =>{
             if(tree.isMine && this.cells[tree.cellIndex].richness > bestTree.richness){
@@ -72,21 +154,86 @@ class Game {
                 bestTree.richness = this.cells[tree.cellIndex].richness;
             }
         });
+
         console.error(bestTree);
 
         if(bestTree.index === -1){
-            res=(new Action(WAIT));
-        }else{
-            if(bestTree.size <3){
-                res=(new Action(GROW, bestTree.index));
-            }else{
-                res=(new Action(COMPLETE, bestTree.index));
-            }
+            is_good = false;
+        }
+
+        return {
+            is_good: is_good,
+            cellIndex: bestTree.index
+        };
+    }
+
+
+    chooseBestAction(){
+        let res;
+
+        switch (getRandomInt(0, 5)){
+            case 0: case 3:
+                res = COMPLETE;
+                break;
+            case 1: case 4:
+                res = GROW;
+                break;
+            case 2:
+                res = SEED;
+                break;
         }
 
         return res;
     }
+
+    getNextAction(rec_i = 0) {
+        const res = {
+            type:WAIT,
+            sourceIndex:-1,
+            targetIndex:-1,
+        }
+        let redo = false;
+
+        switch (this.chooseBestAction()){
+            case WAIT:
+                break;
+            case SEED:
+                const bestSeed = this.getBestSeed();
+                if(bestSeed.is_good){
+                    res.type = SEED;
+                    res.sourceIndex = bestSeed.cellIndex;
+                    res.targetIndex = bestSeed.targetIndex;
+                }else{
+                    redo = true
+                }
+                break;
+            case GROW:
+                const bestGrow = this.getBestGrow();
+                if(bestGrow.is_good){
+                    res.type = GROW;
+                    res.targetIndex = bestGrow.cellIndex;
+                }else{
+                    redo = true
+                }
+                break;
+            case COMPLETE:
+                const bestComplete = this.getBestComplete();
+                if(bestComplete.is_good){
+                    res.type = COMPLETE;
+                    res.targetIndex = bestComplete.cellIndex;
+                }else{
+                    redo = true
+                }
+                break;
+        }
+        if(redo && rec_i < this.max_rec){
+            return this.getNextAction(rec_i+1);
+        }else{
+            return new Action(res.type, res.targetIndex, res.sourceIndex);
+        }
+    }
 }
+
 
 const game = new Game()
 
