@@ -1,5 +1,5 @@
 
-// utilities
+// --- utilities ---
 
 function getRandomInt(min,max) {
     return Math.floor(Math.random() * (max-min))  + min;
@@ -10,7 +10,8 @@ function getRandomNumber(min,max) {
 }
 
 
-// Main classes
+
+// --- Main classes ---
 
 class Cell {
     constructor(index, richness, neighbors) {
@@ -61,6 +62,9 @@ class Action {
 }
 
 
+
+// --- Da game manager ---
+
 class Game {
     constructor() {
         // inputs :
@@ -75,10 +79,28 @@ class Game {
         this.opponentScore = 0;
         this.opponentIsWaiting = 0;
 
-        // vars :
+        // settings :
         this.max_rec = 10;
-
+        this.max_max_trees = 2;
+        this.min_nbr_trees = 3;
     }
+
+    getNumberOfTrees() {
+        const res = {
+            nbr_of_max_tree:0,
+            nbr_of_trees:0,
+        };
+        this.trees.forEach(tree => {
+            if(tree.isMine){
+                res.nbr_of_trees++;
+                if(tree.size === 3){
+                    res.nbr_of_max_tree++;
+                }
+            }
+        });
+        return res;
+    }
+
 
     getBestSeed() {
         const bestLoc = {
@@ -148,7 +170,7 @@ class Game {
         let is_good = true;
 
         this.trees.forEach(tree =>{
-            if(tree.isMine && this.cells[tree.cellIndex].richness > bestTree.richness){
+            if(tree.isMine && this.cells[tree.cellIndex].richness > bestTree.richness && tree.size === 3){
                 bestTree.index = tree.cellIndex;
                 bestTree.size = tree.size;
                 bestTree.richness = this.cells[tree.cellIndex].richness;
@@ -168,72 +190,88 @@ class Game {
     }
 
 
-    chooseBestAction(){
-        let res;
+    chooseBestAction(problematique_action){
+        const nbr_of_trees = this.getNumberOfTrees();
+        console.error(`nbr of trees : `, nbr_of_trees);
 
-        switch (getRandomInt(0, 5)){
-            case 0: case 3:
-                res = COMPLETE;
-                break;
-            case 1: case 4:
-                res = GROW;
-                break;
-            case 2:
-                res = SEED;
-                break;
+        if(nbr_of_trees.nbr_of_trees < this.min_nbr_trees){
+            if(nbr_of_trees.nbr_of_max_tree > 0 && problematique_action!==SEED){
+                console.error(`CHOSE ${SEED} at n1`);
+                return SEED;
+            }else if(problematique_action!==GROW){
+                console.error(`CHOSE ${GROW} at n1`);
+                return GROW;
+            }
         }
 
-        return res;
+        if(nbr_of_trees.nbr_of_max_tree > this.max_max_trees && problematique_action!==COMPLETE){
+            console.error(`CHOSE ${COMPLETE} at n1`);
+            return COMPLETE;
+        }
+
+        if(nbr_of_trees.nbr_of_trees > nbr_of_trees.nbr_of_max_tree && problematique_action!==GROW){
+            console.error(`CHOSE ${GROW} at n2`);
+            return GROW;
+        }else if(problematique_action!==SEED){
+            console.error(`CHOSE ${SEED} at n2`);
+            return SEED;
+        }
+
+        console.error(`NO ACTION CHOSEN`);
+        return WAIT;
     }
 
-    getNextAction(rec_i = 0) {
+    getNextAction(rec_i = 0, problematique_action = 'NONE') {
         const res = {
             type:WAIT,
             sourceIndex:-1,
             targetIndex:-1,
         }
-        let redo = false;
+        let is_good = true;
 
-        switch (this.chooseBestAction()){
+        switch (this.chooseBestAction(problematique_action)){
             case WAIT:
                 break;
             case SEED:
                 const bestSeed = this.getBestSeed();
-                if(bestSeed.is_good){
-                    res.type = SEED;
-                    res.sourceIndex = bestSeed.cellIndex;
-                    res.targetIndex = bestSeed.targetIndex;
-                }else{
-                    redo = true
+                res.type = SEED;
+                res.sourceIndex = bestSeed.cellIndex;
+                res.targetIndex = bestSeed.targetIndex;
+                if(!bestSeed.is_good){
+                    is_good = false;
                 }
                 break;
             case GROW:
                 const bestGrow = this.getBestGrow();
-                if(bestGrow.is_good){
-                    res.type = GROW;
-                    res.targetIndex = bestGrow.cellIndex;
-                }else{
-                    redo = true
+                res.type = GROW;
+                res.targetIndex = bestGrow.cellIndex;
+                if(!bestGrow.is_good){
+                    is_good = false;
                 }
                 break;
             case COMPLETE:
                 const bestComplete = this.getBestComplete();
-                if(bestComplete.is_good){
-                    res.type = COMPLETE;
-                    res.targetIndex = bestComplete.cellIndex;
-                }else{
-                    redo = true
+                res.type = COMPLETE;
+                res.targetIndex = bestComplete.cellIndex;
+                if(!bestComplete.is_good){
+                    is_good = false;
                 }
                 break;
         }
-        if(redo && rec_i < this.max_rec){
-            return this.getNextAction(rec_i+1);
+
+        if(!is_good && rec_i < this.max_rec){
+            return this.getNextAction(rec_i+1, res.type);
         }else{
             return new Action(res.type, res.targetIndex, res.sourceIndex);
         }
     }
 }
 
+
+
+
+
+// --- get and send data ---
 
 const game = new Game()
 
