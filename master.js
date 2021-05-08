@@ -71,12 +71,13 @@ class Action {
 // --- Prediction classes ---
 
 class RoundAnalyse{
-    constructor(score_of_previous_round, trees, cells, play_index) {
+    constructor(score_of_previous_round, trees, cells, play_index, sun) {
         // inputs :
         this.play_index = play_index;
         this.score_of_previous_round = score_of_previous_round;
         this.cells = cells;
         this.trees = trees;
+        this.sun = sun;
 
         // settings :
         this.min_trees = 1;
@@ -86,12 +87,16 @@ class RoundAnalyse{
         const res = {
             nbr_of_max_tree:0,
             nbr_of_trees:0,
+            nbr_of_seeds:0,
         };
         this.trees.forEach(tree => {
             if(tree.isMine){
                 res.nbr_of_trees++;
                 if(tree.size === 3){
                     res.nbr_of_max_tree++;
+                }
+                if(tree.size === 0){
+                    res.nbr_of_seeds++;
                 }
             }
         });
@@ -113,7 +118,7 @@ class RoundAnalyse{
         const actions_score = [];
         const nbr_of_trees = this.getNumberOfTrees();
 
-        /*
+
         //WAIT
 
         actions_score.push({
@@ -123,14 +128,14 @@ class RoundAnalyse{
             sourceIndex:-1,
             targetIndex: -1,
         });
-        */
+
 
 
         if(nbr_of_trees.nbr_of_max_tree > 0){
 
             // COMPLETE
 
-            if (nbr_of_trees.nbr_of_trees > this.min_trees){
+            if (nbr_of_trees.nbr_of_trees > this.min_trees && this.sun >= 4){
                 this.trees.forEach(tree =>{
                     if(tree.size === 3 && tree.isMine && !tree.isDormant){
                         actions_score.push({
@@ -146,39 +151,55 @@ class RoundAnalyse{
 
 
             // SEED
-
-            this.trees.forEach(tree =>{
-                if (tree.isMine && tree.size === 3 && !tree.isDormant){
-                    this.cells[tree.cellIndex].neighbors.forEach(spot =>{
-                        if(spot !== -1 && this.cells[spot].richness > 0 && !this.isOccupied(spot)){
-                            actions_score.push({
-                                play_index: this.play_index,
-                                score: this.score_of_previous_round + this.cells[tree.cellIndex].richness / 4,
-                                action: SEED,
-                                sourceIndex: tree.cellIndex,
-                                targetIndex: spot,
-                            });
-                        }
-                    });
-                }
-            });
+            if (this.sun >= nbr_of_trees.nbr_of_seeds){
+                this.trees.forEach(tree => {
+                    if (tree.isMine && tree.size === 3 && !tree.isDormant){
+                        this.cells[tree.cellIndex].neighbors.forEach(spot => {
+                            if (spot !== -1 && this.cells[spot].richness > 0 && !this.isOccupied(spot)){
+                                actions_score.push({
+                                    play_index: this.play_index,
+                                    score: this.score_of_previous_round + this.cells[tree.cellIndex].richness / 4,
+                                    action: SEED,
+                                    sourceIndex: tree.cellIndex,
+                                    targetIndex: spot,
+                                });
+                            }
+                        });
+                    }
+                });
+            }
         }
 
 
         // GROW
-
-        if(nbr_of_trees.nbr_of_trees > nbr_of_trees.nbr_of_max_tree){
-            this.trees.forEach(tree =>{
-                if(tree.size < 3 && tree.isMine && !tree.isDormant){
-                    actions_score.push({
-                        play_index: this.play_index,
-                        score: this.score_of_previous_round + this.cells[tree.cellIndex].richness / (4-tree.size),
-                        action: GROW,
-                        targetIndex: tree.cellIndex,
-                        sourceIndex: -1,
-                    });
-                }
-            });
+        if (this.sun >= 1){
+            if (nbr_of_trees.nbr_of_trees > nbr_of_trees.nbr_of_max_tree){
+                this.trees.forEach(tree => {
+                    if (tree.size < 3 && tree.isMine && !tree.isDormant){
+                        let needed_sun;
+                        switch (tree.size){
+                            case 0:
+                                needed_sun=1;
+                                break;
+                            case 1:
+                                needed_sun=3;
+                                break;
+                            case 2:
+                                needed_sun=7;
+                                break;
+                        }
+                        if(this.sun >= needed_sun){
+                            actions_score.push({
+                                play_index: this.play_index,
+                                score: this.score_of_previous_round + this.cells[tree.cellIndex].richness / (4 - tree.size),
+                                action: GROW,
+                                targetIndex: tree.cellIndex,
+                                sourceIndex: -1,
+                            });
+                        }
+                    }
+                });
+            }
         }
 
         if(this.play_index === -1){
@@ -216,8 +237,34 @@ class Game {
         this.ending_max_rec = 3;
     }
 
+    getNumberOfTrees(trees) {
+        const res = {
+            size_1:0,
+            size_2:0,
+            size_3:0,
+        };
+        trees.forEach(tree => {
+            if(tree.isMine){
+                switch (tree.size){
+                    case 0:
+                        break;
+                    case 1:
+                        res.size_1++;
+                        break;
+                    case 2:
+                        res.size_2++;
+                        break;
+                    case 3:
+                        res.size_3++;
+                        break;
+                }
+            }
+        });
+        return res;
+    }
 
-    makeAnAction(trees, action){
+
+    makeAnAction(action, trees, sun){
         trees.map(tree =>{
             tree.isDormant = false;
             return tree;
@@ -244,8 +291,15 @@ class Game {
                 }
             }
             trees.push(new Tree(action.targetIndex, 0, true, false));
+        }else if(action.action === WAIT){
+            const nbr_of_trees = this.getNumberOfTrees(trees);
+            sun += nbr_of_trees.size_1 + nbr_of_trees.size_2 * 2 + nbr_of_trees.size_3 * 3;
         }
-        return trees;
+
+        return {
+            trees:trees,
+            sun:sun,
+        };
     }
 
 
@@ -257,13 +311,15 @@ class Game {
         }
 
         // Get all possible action to play next round
-        const first_analyse = new RoundAnalyse(0, this.trees, this.cells, -1);
+        const first_analyse = new RoundAnalyse(0, this.trees, this.cells, -1, this.mySun);
         const first_actions_layer = first_analyse.getActionsScore();
 
         let last_actions_layer = [];
 
         first_actions_layer.forEach(action=>{
-            action.trees = this.makeAnAction(JSON.parse(JSON.stringify(this.trees)), action);
+            const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(this.trees)), this.mySun);
+            action.trees = action_made.trees;
+            action.sun = action_made.sun;
             last_actions_layer.push(action);
         });
 
@@ -273,9 +329,10 @@ class Game {
             //console.error(`new iter ${i}, time : ${(new Date().getTime()) - timeChecker} ms`);
             const new_actions_layer = [];
             last_actions_layer.forEach(action =>{
-                const returned_actions = (new RoundAnalyse(action.score, action.trees, this.cells, action.play_index)).getActionsScore();
+                const returned_actions = (new RoundAnalyse(action.score, action.trees, this.cells, action.play_index, action.sun)).getActionsScore();
                 returned_actions.map(val => {
-                    val.trees = action.trees
+                    val.trees = action.trees;
+                    val.sun = action.sun;
                     return val;
                 });
                 new_actions_layer.push(
@@ -299,6 +356,10 @@ class Game {
                     score:-1,
                     action:-1,
                 },
+                'WAIT':{
+                    score:-1,
+                    action:-1,
+                },
             }
 
             new_actions_layer.forEach(action =>{
@@ -318,7 +379,9 @@ class Game {
 
             last_actions_layer = [];
             sorted_actions_layer.forEach(action=>{
-                action.trees = this.makeAnAction(JSON.parse(JSON.stringify(action.trees)), action);
+                const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(action.trees)), action.sun);
+                action.trees = action_made.trees;
+                action.sun = action_made.sun;
                 last_actions_layer.push(action);
             });
         }
