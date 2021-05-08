@@ -4,6 +4,7 @@ let timeChecker = new Date().getTime();
 
 // TODO : manage sun count
 
+
 // --- utilities ---
 
 function getRandomInt(min,max) {
@@ -98,6 +99,16 @@ class RoundAnalyse{
     }
 
 
+    isOccupied(spot) {
+        for (let i = 0; i < this.trees.length; i++) {
+            if(this.trees[i].cellIndex === spot){
+                return true
+            }
+        }
+        return false;
+    }
+
+
     getActionsScore(){
         const actions_score = [];
         const nbr_of_trees = this.getNumberOfTrees();
@@ -137,9 +148,9 @@ class RoundAnalyse{
             // SEED
 
             this.trees.forEach(tree =>{
-                if (tree.isMine){
+                if (tree.isMine && !tree.isDormant){
                     this.cells[tree.cellIndex].neighbors.forEach(spot =>{
-                        if(spot !== -1 ){
+                        if(spot !== -1 && this.cells[spot].richness > 0 && !this.isOccupied(spot)){
                             actions_score.push({
                                 play_index: this.play_index,
                                 score: this.score_of_previous_round + this.cells[tree.cellIndex].richness / 4,
