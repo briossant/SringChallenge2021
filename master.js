@@ -2,6 +2,8 @@ let timeChecker = new Date().getTime();
 // to log time -> console.error(`[BALISE] time : ${(new Date().getTime()) - timeChecker} ms`);
 
 
+// TODO : manage sun count
+
 // --- utilities ---
 
 function getRandomInt(min,max) {
@@ -100,7 +102,7 @@ class RoundAnalyse{
         const actions_score = [];
         const nbr_of_trees = this.getNumberOfTrees();
 
-
+        /*
         //WAIT
 
         actions_score.push({
@@ -110,14 +112,16 @@ class RoundAnalyse{
             sourceIndex:-1,
             targetIndex: -1,
         });
+        */
 
 
         if(nbr_of_trees.nbr_of_max_tree > 0){
 
             // COMPLETE
+
             if (nbr_of_trees.nbr_of_trees > this.min_trees){
                 this.trees.forEach(tree =>{
-                    if(tree.size === 3 && tree.isMine){
+                    if(tree.size === 3 && tree.isMine && !tree.isDormant){
                         actions_score.push({
                             play_index: this.play_index,
                             score: this.score_of_previous_round + this.cells[tree.cellIndex].richness,
@@ -154,7 +158,7 @@ class RoundAnalyse{
 
         if(nbr_of_trees.nbr_of_trees > nbr_of_trees.nbr_of_max_tree){
             this.trees.forEach(tree =>{
-                if(tree.size < 3 && tree.isMine){
+                if(tree.size < 3 && tree.isMine && !tree.isDormant){
                     actions_score.push({
                         play_index: this.play_index,
                         score: this.score_of_previous_round + this.cells[tree.cellIndex].richness / (4-tree.size),
@@ -196,26 +200,118 @@ class Game {
         this.opponentIsWaiting = 0;
 
         // settings :
-        this.max_rec = 4;
+        this.max_rec = 30;
+        this.endings_days_start = 20;
+        this.ending_max_rec = 3;
+    }
+
+
+    makeAnAction(trees, action){
+        trees.map(tree =>{
+            tree.isDormant = false;
+            return tree;
+        });
+        if(action.action === COMPLETE){
+            for (let i = 0; i < trees.length; i++) {
+                if (trees[i].cellIndex === action.targetIndex){
+                    trees.splice(i, 1);
+                    break;
+                }
+            }
+        }else if(action.action === GROW){
+            for (let i = 0; i < trees.length; i++) {
+                if (trees[i].cellIndex === action.targetIndex){
+                    trees[i].size++;
+                    break;
+                }
+            }
+        }else if(action.action === SEED){
+            for (let i = 0; i < trees.length; i++) {
+                if (trees[i].cellIndex === action.targetIndex){
+                    trees[i].isDormant = true;
+                    break;
+                }
+            }
+            trees.push(new Tree(action.targetIndex, 0, true, false));
+        }
+        return trees;
     }
 
 
     predict(){
-        // Get all possible action to play next round
-        const first_actions_layer = (new RoundAnalyse(0, this.trees, this.cells, -1)).getActionsScore();
+        //console.error(`start predictions time : ${(new Date().getTime()) - timeChecker} ms`);
 
-        let last_actions_layer = first_actions_layer;
+        if (this.round >= this.endings_days_start){
+            this.max_rec = this.ending_max_rec;
+        }
+
+        // Get all possible action to play next round
+        const first_analyse = new RoundAnalyse(0, this.trees, this.cells, -1);
+        const first_actions_layer = first_analyse.getActionsScore();
+
+        let last_actions_layer = [];
+
+        first_actions_layer.forEach(action=>{
+            action.trees = this.makeAnAction(JSON.parse(JSON.stringify(this.trees)), action);
+            last_actions_layer.push(action);
+        });
+
 
         // Get all possible action for all the previous action
         for (let i=1; i < this.max_rec;i++){
+            //console.error(`new iter ${i}, time : ${(new Date().getTime()) - timeChecker} ms`);
             const new_actions_layer = [];
             last_actions_layer.forEach(action =>{
+                const returned_actions = (new RoundAnalyse(action.score, action.trees, this.cells, action.play_index)).getActionsScore();
+                returned_actions.map(val => {
+                    val.trees = action.trees
+                    return val;
+                });
                 new_actions_layer.push(
-                    ...((new RoundAnalyse(action.score, this.trees, this.cells, action.play_index)).getActionsScore())
+                    ...returned_actions
                 );
             });
-            last_actions_layer = new_actions_layer;
+
+
+            // keep the best action for the next iter
+
+            const best_action_by_type = {
+                'SEED':{
+                    score:-1,
+                    action:-1,
+                },
+                'GROW':{
+                    score:-1,
+                    action:-1,
+                },
+                'COMPLETE':{
+                    score:-1,
+                    action:-1,
+                },
+            }
+
+            new_actions_layer.forEach(action =>{
+                if (best_action_by_type[action.action].score < action.score){
+                    best_action_by_type[action.action].score = action.score;
+                    best_action_by_type[action.action].action = action;
+                }
+            });
+
+            const sorted_actions_layer = [];
+
+            for(const [key, value] of Object.entries(best_action_by_type)){
+                if(value.action !== -1){
+                    sorted_actions_layer.push(value.action);
+                }
+            }
+
+            last_actions_layer = [];
+            sorted_actions_layer.forEach(action=>{
+                action.trees = this.makeAnAction(JSON.parse(JSON.stringify(action.trees)), action);
+                last_actions_layer.push(action);
+            });
         }
+
 
         // Get the best action
         let best_action = {
@@ -270,8 +366,6 @@ for (let i = 0; i < numberOfCells; i++) {
 
 
 while (true) {
-    timeChecker = new Date().getTime();
-
     game.day = parseInt(readline());
     game.nutrients = parseInt(readline());
     let inputs = readline().split(' ');
@@ -299,6 +393,8 @@ while (true) {
         const possibleAction = readline();
         game.possibleActions.push(Action.parse(possibleAction));
     }
+
+    timeChecker = new Date().getTime();
 
     const action = game.getNextAction();
 
