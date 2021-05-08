@@ -237,14 +237,34 @@ class Game {
         this.ending_max_rec = 3;
     }
 
-    getNumberOfTrees(trees) {
+
+    castShadows(tree, trees, day){
+        const pos_to_check = [];
+        let next_pos = tree.cellIndex;
+        for (let i = 0; i < 3; i++) {
+            next_pos = this.cells[next_pos].neighbors[(day+3)%6];
+            if(next_pos === -1){
+                break;
+            }
+            pos_to_check.push(next_pos);
+        }
+        trees.forEach(k_tree =>{
+            if(pos_to_check.includes(k_tree.cellIndex) && k_tree.size >= tree.size){
+                return false;
+            }
+        });
+        return true;
+    }
+
+
+    getNumberOfTreesForSun(trees, day) {
         const res = {
             size_1:0,
             size_2:0,
             size_3:0,
         };
         trees.forEach(tree => {
-            if(tree.isMine){
+            if(tree.isMine && this.castShadows(tree, trees, day)){
                 switch (tree.size){
                     case 0:
                         break;
@@ -264,7 +284,7 @@ class Game {
     }
 
 
-    makeAnAction(action, trees, sun){
+    makeAnAction(action, trees, sun, day){
         trees.map(tree =>{
             tree.isDormant = false;
             return tree;
@@ -292,19 +312,24 @@ class Game {
             }
             trees.push(new Tree(action.targetIndex, 0, true, false));
         }else if(action.action === WAIT){
-            const nbr_of_trees = this.getNumberOfTrees(trees);
+            const nbr_of_trees = this.getNumberOfTreesForSun(trees, day);
             sun += nbr_of_trees.size_1 + nbr_of_trees.size_2 * 2 + nbr_of_trees.size_3 * 3;
+            day++;
         }
 
         return {
             trees:trees,
             sun:sun,
+            day:day,
         };
     }
 
 
     predict(){
         //console.error(`start predictions time : ${(new Date().getTime()) - timeChecker} ms`);
+
+
+        // ---- START ----
 
         if (this.round >= this.endings_days_start){
             this.max_rec = this.ending_max_rec;
@@ -317,12 +342,15 @@ class Game {
         let last_actions_layer = [];
 
         first_actions_layer.forEach(action=>{
-            const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(this.trees)), this.mySun);
+            const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(this.trees)), this.mySun, this.day);
             action.trees = action_made.trees;
             action.sun = action_made.sun;
+            action.day = action_made.day;
             last_actions_layer.push(action);
         });
 
+
+        // ---- LOOP ----
 
         // Get all possible action for all the previous action
         for (let i=1; i < this.max_rec;i++){
@@ -333,6 +361,7 @@ class Game {
                 returned_actions.map(val => {
                     val.trees = action.trees;
                     val.sun = action.sun;
+                    val.day = action.day;
                     return val;
                 });
                 new_actions_layer.push(
@@ -379,13 +408,16 @@ class Game {
 
             last_actions_layer = [];
             sorted_actions_layer.forEach(action=>{
-                const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(action.trees)), action.sun);
+                const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(action.trees)), action.sun, action.day);
                 action.trees = action_made.trees;
                 action.sun = action_made.sun;
+                action.day = action_made.day;
                 last_actions_layer.push(action);
             });
         }
 
+
+        // ---- RESULT ----
 
         // Get the best action
         let best_action = {
