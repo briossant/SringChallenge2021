@@ -1,3 +1,6 @@
+let timeChecker = new Date().getTime();
+// to log time -> console.error(`[BALISE] time : ${(new Date().getTime()) - timeChecker} ms`);
+
 
 // --- utilities ---
 
@@ -62,27 +65,18 @@ class Action {
 }
 
 
+// --- Prediction classes ---
 
-// --- Da game manager ---
-
-class Game {
-    constructor() {
+class RoundAnalyse{
+    constructor(score_of_previous_round, trees, cells, play_index) {
         // inputs :
-        this.round = 0;
-        this.nutrients = 0;
-        this.cells = [];
-        this.possibleActions = [];
-        this.trees = [];
-        this.mySun = 0;
-        this.myScore = 0;
-        this.opponentsSun = 0;
-        this.opponentScore = 0;
-        this.opponentIsWaiting = 0;
+        this.play_index = play_index;
+        this.score_of_previous_round = score_of_previous_round;
+        this.cells = cells;
+        this.trees = trees;
 
         // settings :
-        this.max_rec = 10;
-        this.max_max_trees = 2;
-        this.min_nbr_trees = 3;
+        this.min_trees = 1;
     }
 
     getNumberOfTrees() {
@@ -102,168 +96,151 @@ class Game {
     }
 
 
-    getBestSeed() {
-        const bestLoc = {
-            index:-1,
-            richness:-1,
-            target: -1,
-        }
-        let is_good = true;
+    getActionsScore(){
+        const actions_score = [];
+        const nbr_of_trees = this.getNumberOfTrees();
 
-        this.trees.forEach(tree =>{
-            if (tree.isMine){
-                this.cells[tree.cellIndex].neighbors.forEach(spot =>{
-                    if(spot !== -1 ){
-                        if(this.cells[spot].richness > bestLoc.richness){
-                            bestLoc.index = tree.cellIndex;
-                            bestLoc.target = spot;
-                            bestLoc.richness = this.cells[spot].richness;
-                        }
+
+        //WAIT
+
+        actions_score.push({
+            play_index: this.play_index,
+            score:this.score_of_previous_round,
+            action:WAIT,
+            sourceIndex:-1,
+            targetIndex: -1,
+        });
+
+
+        if(nbr_of_trees.nbr_of_max_tree > 0){
+
+            // COMPLETE
+            if (nbr_of_trees.nbr_of_trees > this.min_trees){
+                this.trees.forEach(tree =>{
+                    if(tree.size === 3 && tree.isMine){
+                        actions_score.push({
+                            play_index: this.play_index,
+                            score: this.score_of_previous_round + this.cells[tree.cellIndex].richness,
+                            action: COMPLETE,
+                            targetIndex: tree.cellIndex,
+                            sourceIndex: -1,
+                        });
                     }
                 });
             }
-        });
 
-        if(bestLoc.index === -1){
-            is_good = false;
+
+            // SEED
+
+            this.trees.forEach(tree =>{
+                if (tree.isMine){
+                    this.cells[tree.cellIndex].neighbors.forEach(spot =>{
+                        if(spot !== -1 ){
+                            actions_score.push({
+                                play_index: this.play_index,
+                                score: this.score_of_previous_round + this.cells[tree.cellIndex].richness / 4,
+                                action: SEED,
+                                sourceIndex: tree.cellIndex,
+                                targetIndex: spot,
+                            });
+                        }
+                    });
+                }
+            });
         }
 
-        return {
-            is_good: is_good,
-            cellIndex: bestLoc.index,
-            targetIndex: bestLoc.target,
-        };
+
+        // GROW
+
+        if(nbr_of_trees.nbr_of_trees > nbr_of_trees.nbr_of_max_tree){
+            this.trees.forEach(tree =>{
+                if(tree.size < 3 && tree.isMine){
+                    actions_score.push({
+                        play_index: this.play_index,
+                        score: this.score_of_previous_round + this.cells[tree.cellIndex].richness / (4-tree.size),
+                        action: GROW,
+                        targetIndex: tree.cellIndex,
+                        sourceIndex: -1,
+                    });
+                }
+            });
+        }
+
+        if(this.play_index === -1){
+            actions_score.map((val, i) => {
+                val.play_index = i;
+                return val;
+            });
+        }
+
+        return actions_score;
+    }
+}
+
+
+
+// --- Da game manager ---
+
+class Game {
+    constructor() {
+        // inputs :
+        this.round = 0;
+        this.nutrients = 0;
+        this.cells = [];
+        this.possibleActions = [];
+        this.trees = [];
+        this.mySun = 0;
+        this.myScore = 0;
+        this.opponentsSun = 0;
+        this.opponentScore = 0;
+        this.opponentIsWaiting = 0;
+
+        // settings :
+        this.max_rec = 4;
     }
 
-    getBestGrow() {
-        const bestTree = {
-            index:-1,
-            richness:-1,
-        }
-        let is_good = true;
 
-        this.trees.forEach(tree =>{
-            if(tree.isMine && this.cells[tree.cellIndex].richness > bestTree.richness && tree.size < 3){
-                bestTree.index = tree.cellIndex;
-                bestTree.size = tree.size;
-                bestTree.richness = this.cells[tree.cellIndex].richness;
-            }
-        });
+    predict(){
+        // Get all possible action to play next round
+        const first_actions_layer = (new RoundAnalyse(0, this.trees, this.cells, -1)).getActionsScore();
 
-        console.error(bestTree);
+        let last_actions_layer = first_actions_layer;
 
-        if(bestTree.index === -1){
-            is_good = false;
+        // Get all possible action for all the previous action
+        for (let i=1; i < this.max_rec;i++){
+            const new_actions_layer = [];
+            last_actions_layer.forEach(action =>{
+                new_actions_layer.push(
+                    ...((new RoundAnalyse(action.score, this.trees, this.cells, action.play_index)).getActionsScore())
+                );
+            });
+            last_actions_layer = new_actions_layer;
         }
 
-        return {
-            is_good: is_good,
-            cellIndex: bestTree.index
-        };
-    }
-
-    getBestComplete() {
-        const bestTree = {
-            index:-1,
-            richness:-1,
-        }
-        let is_good = true;
-
-        this.trees.forEach(tree =>{
-            if(tree.isMine && this.cells[tree.cellIndex].richness > bestTree.richness && tree.size === 3){
-                bestTree.index = tree.cellIndex;
-                bestTree.size = tree.size;
-                bestTree.richness = this.cells[tree.cellIndex].richness;
-            }
-        });
-
-        console.error(bestTree);
-
-        if(bestTree.index === -1){
-            is_good = false;
-        }
-
-        return {
-            is_good: is_good,
-            cellIndex: bestTree.index
-        };
-    }
-
-
-    chooseBestAction(problematique_action){
-        const nbr_of_trees = this.getNumberOfTrees();
-        console.error(`nbr of trees : `, nbr_of_trees);
-
-        if(nbr_of_trees.nbr_of_trees < this.min_nbr_trees){
-            if(nbr_of_trees.nbr_of_max_tree > 0 && problematique_action!==SEED){
-                console.error(`CHOSE ${SEED} at n1`);
-                return SEED;
-            }else if(problematique_action!==GROW){
-                console.error(`CHOSE ${GROW} at n1`);
-                return GROW;
-            }
-        }
-
-        if(nbr_of_trees.nbr_of_max_tree > this.max_max_trees && problematique_action!==COMPLETE){
-            console.error(`CHOSE ${COMPLETE} at n1`);
-            return COMPLETE;
-        }
-
-        if(nbr_of_trees.nbr_of_trees > nbr_of_trees.nbr_of_max_tree && problematique_action!==GROW){
-            console.error(`CHOSE ${GROW} at n2`);
-            return GROW;
-        }else if(problematique_action!==SEED){
-            console.error(`CHOSE ${SEED} at n2`);
-            return SEED;
-        }
-
-        console.error(`NO ACTION CHOSEN`);
-        return WAIT;
-    }
-
-    getNextAction(rec_i = 0, problematique_action = 'NONE') {
-        const res = {
-            type:WAIT,
+        // Get the best action
+        let best_action = {
+            score:-1,
+            action:WAIT,
             sourceIndex:-1,
-            targetIndex:-1,
+            targetIndex: -1,
         }
-        let is_good = true;
+        last_actions_layer.forEach(action => {
+            if (action.score > best_action.score){
+                best_action.score = action.score;
+                best_action.action = first_actions_layer[action.play_index].action;
+                best_action.sourceIndex = first_actions_layer[action.play_index].sourceIndex;
+                best_action.targetIndex = first_actions_layer[action.play_index].targetIndex;
+            }
+        });
 
-        switch (this.chooseBestAction(problematique_action)){
-            case WAIT:
-                break;
-            case SEED:
-                const bestSeed = this.getBestSeed();
-                res.type = SEED;
-                res.sourceIndex = bestSeed.cellIndex;
-                res.targetIndex = bestSeed.targetIndex;
-                if(!bestSeed.is_good){
-                    is_good = false;
-                }
-                break;
-            case GROW:
-                const bestGrow = this.getBestGrow();
-                res.type = GROW;
-                res.targetIndex = bestGrow.cellIndex;
-                if(!bestGrow.is_good){
-                    is_good = false;
-                }
-                break;
-            case COMPLETE:
-                const bestComplete = this.getBestComplete();
-                res.type = COMPLETE;
-                res.targetIndex = bestComplete.cellIndex;
-                if(!bestComplete.is_good){
-                    is_good = false;
-                }
-                break;
-        }
+        console.error(best_action);
 
-        if(!is_good && rec_i < this.max_rec){
-            return this.getNextAction(rec_i+1, res.type);
-        }else{
-            return new Action(res.type, res.targetIndex, res.sourceIndex);
-        }
+        return new Action(best_action.action, best_action.targetIndex, best_action.sourceIndex);
+    }
+
+
+    getNextAction() {
+        return this.predict();
     }
 }
 
@@ -293,6 +270,8 @@ for (let i = 0; i < numberOfCells; i++) {
 
 
 while (true) {
+    timeChecker = new Date().getTime();
+
     game.day = parseInt(readline());
     game.nutrients = parseInt(readline());
     let inputs = readline().split(' ');
@@ -322,5 +301,8 @@ while (true) {
     }
 
     const action = game.getNextAction();
+
+    console.error(`Total time : ${(new Date().getTime()) - timeChecker} ms`);
+
     console.log(action.toString());
 }
