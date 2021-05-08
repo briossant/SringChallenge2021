@@ -148,7 +148,7 @@ class RoundAnalyse{
             // SEED
 
             this.trees.forEach(tree =>{
-                if (tree.isMine && !tree.isDormant){
+                if (tree.isMine && tree.size === 3 && !tree.isDormant){
                     this.cells[tree.cellIndex].neighbors.forEach(spot =>{
                         if(spot !== -1 && this.cells[spot].richness > 0 && !this.isOccupied(spot)){
                             actions_score.push({
