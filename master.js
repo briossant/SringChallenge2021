@@ -182,13 +182,23 @@ class RoundAnalyse{
             }
             this.trees.forEach(tree => {
                 if (tree.isMine && tree.size > 0 && !tree.isDormant){
-                    this.cells[tree.cellIndex].neighbors.forEach(spot => {
-                        if (spot !== -1 && this.cells[spot].richness > bestTree.score && !this.isOccupied(spot) ){
-                            bestTree.score = this.cells[spot].richness;
-                            bestTree.tree = tree;
-                            bestTree.spot = spot;
-                        }
-                    });
+                    let cells_to_check = [tree.cellIndex];
+                    for (let i = 0; i < tree.size; i++) {
+                        let new_cells = [];
+                        cells_to_check.forEach(cell =>{
+                            this.cells[cell].neighbors.forEach(spot => {
+                                if (spot !== -1 ){
+                                    new_cells.push(spot);
+                                    if (this.cells[spot].richness > bestTree.score && !this.isOccupied(spot)){
+                                        bestTree.score = this.cells[spot].richness;
+                                        bestTree.tree = tree;
+                                        bestTree.spot = spot;
+                                    }
+                                }
+                            });
+                        });
+                        cells_to_check = new_cells;
+                    }
                 }
             });
             if(bestTree.tree !== -1){
