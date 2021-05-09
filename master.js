@@ -78,8 +78,10 @@ class RoundAnalyse{
         this.cells = cells;
         this.trees = trees;
         this.sun = sun;
+        this.day = day;
 
         // settings :
+
         /*
         this.seed_mul = 3;
         this.complete_mul = 1;
@@ -87,8 +89,8 @@ class RoundAnalyse{
 
         if(day > 15){
             this.seed_mul = 1;
-            this.complete_mul = 1;
-            this.grow_mul = [3, 4, 5];
+            //this.complete_mul = 1;
+            //this.grow_mul = [3, 4, 5];
         }
         if(day >= 22){
             this.seed_mul = 0;
@@ -97,9 +99,10 @@ class RoundAnalyse{
         }
 
          */
+
         this.seed_mul = 0;
         this.complete_mul = 100;
-        this.grow_mul = [10, 10, 10];
+        this.grow_mul = [2, 5, 10];
 
     }
 
@@ -252,16 +255,15 @@ class RoundAnalyse{
 
 
         //WAIT
+        actions_score.push({
+            play_index: this.play_index,
+            score: this.score_of_previous_round,
+            action: WAIT,
+            sourceIndex: -1,
+            targetIndex: -1,
+        });
 
-        if (actions_score.length === 0){
-            actions_score.push({
-                play_index: this.play_index,
-                score: this.score_of_previous_round,
-                action: WAIT,
-                sourceIndex: -1,
-                targetIndex: -1,
-            });
-        }
+        //if (actions_score.length === 0){}
 
         if(this.play_index === -1){
             actions_score.map((val, i) => {
@@ -293,9 +295,9 @@ class Game {
         this.opponentIsWaiting = 0;
 
         // settings :
-        this.max_rec = 100;
+        this.max_rec = 20;
         this.max_action_nbr = 0;
-        this.randomly_choosed_action_nbr = 15;
+        this.randomly_choosed_action_nbr = 50;
     }
 
 
@@ -350,10 +352,7 @@ class Game {
 
 
     makeAnAction(action, trees, sun, day){
-        trees.map(tree =>{
-            tree.isDormant = false;
-            return tree;
-        });
+
         if(action.action === COMPLETE){
             for (let i = 0; i < trees.length; i++) {
                 if (trees[i].cellIndex === action.targetIndex){
@@ -378,6 +377,7 @@ class Game {
                             break;
                     }
                     trees[i].size++;
+                    trees[i].isDormant = true;
                     break;
                 }
             }
@@ -392,6 +392,10 @@ class Game {
             }
             trees.push(new Tree(action.targetIndex, 0, true, false));
         }else if(action.action === WAIT){
+            trees.map(tree =>{
+                tree.isDormant = false;
+                return tree;
+            });
             if(day < 23){
                 const nbr_of_trees = this.getNumberOfTreesForSun(trees, day, true);
                 sun += nbr_of_trees.size_1 + nbr_of_trees.size_2 * 2 + nbr_of_trees.size_3 * 3;
@@ -425,7 +429,7 @@ class Game {
             action.trees = action_made.trees;
             action.sun = action_made.sun;
             action.day = action_made.day;
-            //action.act_list = [action.action]
+            action.act_list = [action.action]
             last_actions_layer.push(action);
         });
 
@@ -448,8 +452,8 @@ class Game {
                         val.trees = action.trees;
                         val.sun = action.sun;
                         val.day = action.day;
-                        //val.act_list = [...action.act_list];
-                        //val.act_list.push(val.action);
+                        val.act_list = [...action.act_list];
+                        val.act_list.push(val.action);
                         return val;
                     });
                     new_actions_layer.push(
@@ -490,8 +494,8 @@ class Game {
             }
 
             new_actions_layer.forEach((action, index) => {
-                if (best_action_by_type[action.action].score < action.score){
-                    best_action_by_type[action.action].score = action.score;
+                if (best_action_by_type[action.action].score < action.score / action.day){
+                    best_action_by_type[action.action].score = action.score / action.day;
                     best_action_by_type[action.action].action = action;
                     best_action_by_type[action.action].index = index;
                 }
@@ -542,14 +546,15 @@ class Game {
             targetIndex: -1,
         }
         last_actions_layer.forEach(action => {
-            if (action.score > best_action.score){
-                best_action.score = action.score;
+            if ((action.score / action.day) > best_action.score){
+                best_action.score = action.score / action.day;
                 best_action.action = first_actions_layer[action.play_index].action;
                 best_action.sourceIndex = first_actions_layer[action.play_index].sourceIndex;
                 best_action.targetIndex = first_actions_layer[action.play_index].targetIndex;
                 to_print = action;
             }
         });
+
         console.error(last_actions_layer.length, first_actions_layer.length);
         //console.error(last_actions_layer);
         console.error('BEST ACTION : ');
