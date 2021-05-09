@@ -80,22 +80,27 @@ class RoundAnalyse{
         this.sun = sun;
 
         // settings :
-        this.change_strate_day = 15;
-
-        this.seed_mul = 4;
+        /*
+        this.seed_mul = 3;
         this.complete_mul = 1;
-        this.grow_mul = [3, 2, 2];
+        this.grow_mul = [3, 4, 5];
 
-        if(day > this.change_strate_day){
+        if(day > 15){
             this.seed_mul = 1;
             this.complete_mul = 1;
-            this.grow_mul = [2, 3, 4];
+            this.grow_mul = [3, 4, 5];
         }
         if(day >= 22){
             this.seed_mul = 0;
-            this.complete_mul = 8;
-            this.grow_mul = [0.5, 1.5, 3];
+            this.complete_mul = 20;
+            this.grow_mul = [1, 3, 5];
         }
+
+         */
+        this.seed_mul = 1;
+        this.complete_mul = 10;
+        this.grow_mul = [1, 1, 1];
+
     }
 
     getNumberOfTrees() {
@@ -142,17 +147,6 @@ class RoundAnalyse{
     getActionsScore(){
         const actions_score = [];
         const nbr_of_trees = this.getNumberOfTrees();
-
-
-        //WAIT
-
-        actions_score.push({
-            play_index: this.play_index,
-            score: this.score_of_previous_round,
-            action: WAIT,
-            sourceIndex: -1,
-            targetIndex: -1,
-        });
 
 
         // COMPLETE
@@ -226,6 +220,19 @@ class RoundAnalyse{
             }
         }
 
+
+        //WAIT
+
+        if (actions_score.length === 0){
+            actions_score.push({
+                play_index: this.play_index,
+                score: this.score_of_previous_round,
+                action: WAIT,
+                sourceIndex: -1,
+                targetIndex: -1,
+            });
+        }
+
         if(this.play_index === -1){
             actions_score.map((val, i) => {
                 val.play_index = i;
@@ -256,9 +263,9 @@ class Game {
         this.opponentIsWaiting = 0;
 
         // settings :
-        this.max_rec = 15;
-        this.max_action_nbr = 8;
-        this.randomly_choosed_action_nbr = 4;
+        this.max_rec = 100;
+        this.max_action_nbr = 0;
+        this.randomly_choosed_action_nbr = 12;
     }
 
 
@@ -355,8 +362,10 @@ class Game {
             }
             trees.push(new Tree(action.targetIndex, 0, true, false));
         }else if(action.action === WAIT){
-            const nbr_of_trees = this.getNumberOfTreesForSun(trees, day, true);
-            sun += nbr_of_trees.size_1 + nbr_of_trees.size_2 * 2 + nbr_of_trees.size_3 * 3;
+            if(day < 23){
+                const nbr_of_trees = this.getNumberOfTreesForSun(trees, day, true);
+                sun += nbr_of_trees.size_1 + nbr_of_trees.size_2 * 2 + nbr_of_trees.size_3 * 3;
+            }
             day++;
         }
 
@@ -386,6 +395,7 @@ class Game {
             action.trees = action_made.trees;
             action.sun = action_made.sun;
             action.day = action_made.day;
+            action.act_list = [action.action]
             last_actions_layer.push(action);
         });
 
@@ -408,6 +418,8 @@ class Game {
                         val.trees = action.trees;
                         val.sun = action.sun;
                         val.day = action.day;
+                        val.act_list = [...action.act_list];
+                        val.act_list.push(val.action);
                         return val;
                     });
                     new_actions_layer.push(
@@ -415,6 +427,7 @@ class Game {
                     );
                 }
             });
+
 
             if(!is_still_updating){
                 console.error(`stop at ${i}`)
@@ -455,7 +468,6 @@ class Game {
 
                 for (const [key, value] of Object.entries(best_action_by_type)) {
                     if (value.action !== -1){
-                        //console.error(value.action)
                         sorted_actions_layer.push(value.action);
                     }
                 }
@@ -512,6 +524,8 @@ class Game {
                 to_print = action;
             }
         });
+        console.error(last_actions_layer.length, first_actions_layer.length);
+        //console.error(last_actions_layer);
         console.error('BEST ACTION : ');
         console.error(to_print);
         console.error(best_action);
@@ -615,7 +629,7 @@ while (true) {
             message = `let's ${action.type}`;
             break;
         case 3:
-            if(game.mySun > 7){
+            if(game.mySun > 10){
                 message = `Wow, I'm pretty rich with all this sun`;
             }else{
                 message = `What a rainy day, give me some sun pleeaaase`;
