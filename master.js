@@ -97,9 +97,9 @@ class RoundAnalyse{
         }
 
          */
-        this.seed_mul = 1;
-        this.complete_mul = 10;
-        this.grow_mul = [1, 1, 1];
+        this.seed_mul = 0;
+        this.complete_mul = 100;
+        this.grow_mul = [10, 10, 10];
 
     }
 
@@ -150,72 +150,92 @@ class RoundAnalyse{
 
 
         // COMPLETE
-        if(nbr_of_trees.size_3 > 0){
-            if (this.sun >= 4){
-                this.trees.forEach(tree => {
-                    if (tree.size === 3 && tree.isMine && !tree.isDormant){
-                        actions_score.push({
-                            play_index: this.play_index,
-                            score: this.score_of_previous_round + this.cells[tree.cellIndex].richness * this.complete_mul,
-                            action: COMPLETE,
-                            targetIndex: tree.cellIndex,
-                            sourceIndex: -1,
-                        });
-                    }
+        if(nbr_of_trees.size_3 > 0 && this.sun >= 4){
+            const bestTree = {
+                score:0,
+                tree:-1,
+            }
+            this.trees.forEach(tree => {
+                if (tree.size === 3 && tree.isMine && !tree.isDormant && this.cells[tree.cellIndex].richness > bestTree.score){
+                    bestTree.score = this.cells[tree.cellIndex].richness;
+                    bestTree.tree = tree;
+                }
+            });
+            if(bestTree.tree !== -1){
+                actions_score.push({
+                    play_index: this.play_index,
+                    score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.complete_mul,
+                    action: COMPLETE,
+                    targetIndex: bestTree.tree.cellIndex,
+                    sourceIndex: -1,
                 });
             }
         }
 
 
         // SEED
-        if(nbr_of_trees.total - nbr_of_trees.seeds > 0){
-            if (this.sun >= nbr_of_trees.seeds){
-                this.trees.forEach(tree => {
-                    if (tree.isMine && tree.size > 0 && !tree.isDormant){
-                        this.cells[tree.cellIndex].neighbors.forEach(spot => {
-                            if (spot !== -1 && this.cells[spot].richness > 0 && !this.isOccupied(spot)){
-                                actions_score.push({
-                                    play_index: this.play_index,
-                                    score: this.score_of_previous_round + this.cells[spot].richness * this.seed_mul,
-                                    action: SEED,
-                                    sourceIndex: tree.cellIndex,
-                                    targetIndex: spot,
-                                });
-                            }
-                        });
-                    }
+        if(nbr_of_trees.total - nbr_of_trees.seeds > 0 && this.sun >= nbr_of_trees.seeds){
+            const bestTree = {
+                score:0,
+                tree:-1,
+                spot:-1,
+            }
+            this.trees.forEach(tree => {
+                if (tree.isMine && tree.size > 0 && !tree.isDormant){
+                    this.cells[tree.cellIndex].neighbors.forEach(spot => {
+                        if (spot !== -1 && this.cells[spot].richness > bestTree.score && !this.isOccupied(spot) ){
+                            bestTree.score = this.cells[spot].richness;
+                            bestTree.tree = tree;
+                            bestTree.spot = spot;
+                        }
+                    });
+                }
+            });
+            if(bestTree.tree !== -1){
+                actions_score.push({
+                    play_index: this.play_index,
+                    score: this.score_of_previous_round + this.cells[bestTree.spot].richness * this.seed_mul,
+                    action: SEED,
+                    sourceIndex: bestTree.tree.cellIndex,
+                    targetIndex:  bestTree.spot,
                 });
             }
         }
 
 
         // GROW
-        if (this.sun >= 1){
-            if (nbr_of_trees.total > nbr_of_trees.size_3){
-                this.trees.forEach(tree => {
-                    if (tree.size < 3 && tree.isMine && !tree.isDormant){
-                        let needed_sun;
-                        switch (tree.size){
-                            case 0:
-                                needed_sun = 1 + nbr_of_trees.size_1;
-                                break;
-                            case 1:
-                                needed_sun = 3 + nbr_of_trees.size_2;
-                                break;
-                            case 2:
-                                needed_sun = 7 + nbr_of_trees.size_3;
-                                break;
-                        }
-                        if(this.sun >= needed_sun){
-                            actions_score.push({
-                                play_index: this.play_index,
-                                score: this.score_of_previous_round + this.cells[tree.cellIndex].richness * this.grow_mul[tree.size],
-                                action: GROW,
-                                targetIndex: tree.cellIndex,
-                                sourceIndex: -1,
-                            });
-                        }
+        if (this.sun >= 1 && nbr_of_trees.total > nbr_of_trees.size_3){
+            const bestTree = {
+                score:0,
+                tree:-1,
+            }
+            this.trees.forEach(tree => {
+                if (tree.size < 3 && tree.isMine && !tree.isDormant && this.cells[tree.cellIndex].richness > bestTree.score){
+                    let needed_sun;
+                    switch (tree.size) {
+                        case 0:
+                            needed_sun = 1 + nbr_of_trees.size_1;
+                            break;
+                        case 1:
+                            needed_sun = 3 + nbr_of_trees.size_2;
+                            break;
+                        case 2:
+                            needed_sun = 7 + nbr_of_trees.size_3;
+                            break;
                     }
+                    if (this.sun >= needed_sun){
+                        bestTree.score = this.cells[tree.cellIndex].richness;
+                        bestTree.tree = tree;
+                    }
+                }
+            });
+            if(bestTree.tree !== -1){
+                actions_score.push({
+                    play_index: this.play_index,
+                    score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.grow_mul[bestTree.tree.size],
+                    action: GROW,
+                    targetIndex: bestTree.tree.cellIndex,
+                    sourceIndex: -1,
                 });
             }
         }
@@ -265,7 +285,7 @@ class Game {
         // settings :
         this.max_rec = 100;
         this.max_action_nbr = 0;
-        this.randomly_choosed_action_nbr = 12;
+        this.randomly_choosed_action_nbr = 15;
     }
 
 
@@ -395,7 +415,7 @@ class Game {
             action.trees = action_made.trees;
             action.sun = action_made.sun;
             action.day = action_made.day;
-            action.act_list = [action.action]
+            //action.act_list = [action.action]
             last_actions_layer.push(action);
         });
 
@@ -418,8 +438,8 @@ class Game {
                         val.trees = action.trees;
                         val.sun = action.sun;
                         val.day = action.day;
-                        val.act_list = [...action.act_list];
-                        val.act_list.push(val.action);
+                        //val.act_list = [...action.act_list];
+                        //val.act_list.push(val.action);
                         return val;
                     });
                     new_actions_layer.push(
@@ -434,74 +454,70 @@ class Game {
                 break;
             }
 
-            if (last_actions_layer.length > this.max_action_nbr){
+            // keep the best action for the next iter
 
-                // keep the best action for the next iter
-
-                const best_action_by_type = {
-                    'SEED': {
-                        score: -1,
-                        action: -1,
-                    },
-                    'GROW': {
-                        score: -1,
-                        action: -1,
-                    },
-                    'COMPLETE': {
-                        score: -1,
-                        action: -1,
-                    },
-                    'WAIT': {
-                        score: -1,
-                        action: -1,
-                    },
-                }
-
-                new_actions_layer.forEach(action => {
-                    if (best_action_by_type[action.action].score < action.score){
-                        best_action_by_type[action.action].score = action.score;
-                        best_action_by_type[action.action].action = action;
-                    }
-                });
-
-                const sorted_actions_layer = [];
-
-                for (const [key, value] of Object.entries(best_action_by_type)) {
-                    if (value.action !== -1){
-                        sorted_actions_layer.push(value.action);
-                    }
-                }
-
-                for (let j = 0; j <  this.randomly_choosed_action_nbr; j++) {
-                    sorted_actions_layer.push(new_actions_layer[getRandomInt(0, new_actions_layer.length)]);
-                }
-
-                last_actions_layer = [];
-                sorted_actions_layer.forEach(action => {
-                    if(action.day > 23){
-                        last_actions_layer.push(action);
-                    }else{
-                        const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(action.trees)), action.sun, action.day);
-                        action.trees = action_made.trees;
-                        action.sun = action_made.sun;
-                        action.day = action_made.day;
-                        last_actions_layer.push(action);
-                    }
-                });
-            }else{
-                last_actions_layer = [];
-                new_actions_layer.forEach(action => {
-                    if(action.day > 23){
-                        last_actions_layer.push(action);
-                    }else {
-                        const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(action.trees)), action.sun, action.day);
-                        action.trees = action_made.trees;
-                        action.sun = action_made.sun;
-                        action.day = action_made.day;
-                        last_actions_layer.push(action);
-                    }
-                });
+            const best_action_by_type = {
+                'SEED': {
+                    score: -1,
+                    action: -1,
+                    index:-1,
+                },
+                'GROW': {
+                    score: -1,
+                    action: -1,
+                    index:-1,
+                },
+                'COMPLETE': {
+                    score: -1,
+                    action: -1,
+                    index:-1,
+                },
+                'WAIT': {
+                    score: -1,
+                    action: -1,
+                    index:-1,
+                },
             }
+
+            new_actions_layer.forEach((action, index) => {
+                if (best_action_by_type[action.action].score < action.score){
+                    best_action_by_type[action.action].score = action.score;
+                    best_action_by_type[action.action].action = action;
+                    best_action_by_type[action.action].index = index;
+                }
+            });
+
+            const sorted_actions_layer = [];
+
+            for (const [key, value] of Object.entries(best_action_by_type)) {
+                if (value.action !== -1){
+                    sorted_actions_layer.push(value.action);
+                    new_actions_layer.splice(value.index, 1);
+                }
+            }
+            let nbr_of_rdm_action = this.randomly_choosed_action_nbr;
+            if (nbr_of_rdm_action > new_actions_layer.length){
+                nbr_of_rdm_action = new_actions_layer.length;
+            }
+
+            for (let j = 0; j < nbr_of_rdm_action; j++) {
+                const index = getRandomInt(0, new_actions_layer.length)
+                sorted_actions_layer.push(new_actions_layer[index]);
+                new_actions_layer.splice(index, 1);
+            }
+
+            last_actions_layer = [];
+            sorted_actions_layer.forEach(action => {
+                if (action.day > 23){
+                    last_actions_layer.push(action);
+                } else {
+                    const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(action.trees)), action.sun, action.day);
+                    action.trees = action_made.trees;
+                    action.sun = action_made.sun;
+                    action.day = action_made.day;
+                    last_actions_layer.push(action);
+                }
+            });
         }
 
 
@@ -607,9 +623,9 @@ while (true) {
             message = `${total_time} ms, am I slow ?`;
             break;
         case 1:
-            if (game.day > 12){
+            if (game.day > 16){
                 if (game.myScore > game.opponentScore){
-                    message = `Haha I'm winning ! (for now at least)`;
+                    message = `pfiou, to easy`;
                 } else if (game.myScore < game.opponentScore){
                     message = `You better be prepared for my comeback`;
                 } else if (game.myScore === game.opponentScore){
@@ -617,7 +633,7 @@ while (true) {
                 }
             }else{
                 if (game.myScore > game.opponentScore){
-                    message = `pfiou, to easy`;
+                    message = `Haha I'm winning ! (for now at least)`;
                 } else if (game.myScore < game.opponentScore){
                     message = `Gnagnagna, let me catch you up, at least a little`;
                 } else if (game.myScore === game.opponentScore){
