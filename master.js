@@ -78,7 +78,7 @@ class RoundAnalyse{
         this.cells = cells;
         this.trees = trees;
         this.sun = sun;
-        this.day = day;
+        this.day = day / 23;
 
         // settings :
 
@@ -100,10 +100,10 @@ class RoundAnalyse{
 
          */
 
-        this.seed_mul = 0;
-        this.complete_mul = 100;
-        this.grow_mul = [2, 5, 10];
-
+        this.seed_mul = 1 / Math.pow(this.day,2);
+        this.complete_mul = Math.exp(this.day*(23/4));
+        this.grow_mul = [20, 40, 120];
+        this.grow_mul.map(val => val/(this.day));
     }
 
     getNumberOfTrees() {
@@ -207,7 +207,7 @@ class RoundAnalyse{
             if(bestTree.tree !== -1){
                 actions_score.push({
                     play_index: this.play_index,
-                    score: this.score_of_previous_round + this.cells[bestTree.spot].richness * this.seed_mul,
+                    score: this.score_of_previous_round + (this.seed_mul * this.cells[bestTree.spot].richness) / Math.pow(nbr_of_trees.total - nbr_of_trees.size_3+1, 2),
                     action: SEED,
                     sourceIndex: bestTree.tree.cellIndex,
                     targetIndex:  bestTree.spot,
@@ -257,7 +257,7 @@ class RoundAnalyse{
         //WAIT
         actions_score.push({
             play_index: this.play_index,
-            score: this.score_of_previous_round,
+            score: this.score_of_previous_round - this.sun,
             action: WAIT,
             sourceIndex: -1,
             targetIndex: -1,
@@ -283,7 +283,7 @@ class RoundAnalyse{
 class Game {
     constructor() {
         // inputs :
-        this.round = 0;
+        this.day = 0;
         this.nutrients = 0;
         this.cells = [];
         this.possibleActions = [];
@@ -297,7 +297,7 @@ class Game {
         // settings :
         this.max_rec = 20;
         this.max_action_nbr = 0;
-        this.randomly_choosed_action_nbr = 50;
+        this.randomly_choosed_action_nbr = 40;
     }
 
 
@@ -352,7 +352,6 @@ class Game {
 
 
     makeAnAction(action, trees, sun, day){
-
         if(action.action === COMPLETE){
             for (let i = 0; i < trees.length; i++) {
                 if (trees[i].cellIndex === action.targetIndex){
@@ -385,18 +384,18 @@ class Game {
             const nbr_of_trees = this.getNumberOfTreesForSun(trees, day, false);
             sun -= nbr_of_trees.seeds;
             for (let i = 0; i < trees.length; i++) {
-                if (trees[i].cellIndex === action.targetIndex){
+                if (trees[i].cellIndex === action.sourceIndex){
                     trees[i].isDormant = true;
                     break;
                 }
             }
             trees.push(new Tree(action.targetIndex, 0, true, false));
         }else if(action.action === WAIT){
-            trees.map(tree =>{
-                tree.isDormant = false;
-                return tree;
-            });
             if(day < 23){
+                trees.map(tree =>{
+                    tree.isDormant = false;
+                    return tree;
+                });
                 const nbr_of_trees = this.getNumberOfTreesForSun(trees, day, true);
                 sun += nbr_of_trees.size_1 + nbr_of_trees.size_2 * 2 + nbr_of_trees.size_3 * 3;
             }
@@ -419,6 +418,7 @@ class Game {
 
 
         // Get all possible action to play next round
+        console.error(`day : ${this.day}`);
         const first_analyse = new RoundAnalyse(0, this.trees, this.cells, -1, this.mySun, this.day);
         const first_actions_layer = first_analyse.getActionsScore();
 
