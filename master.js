@@ -3,8 +3,6 @@ let rounds_played = 0;
 // to log time -> console.error(`[BALISE] time : ${(new Date().getTime()) - timeChecker} ms`);
 
 
-// TODO : manage sun count
-
 
 // --- utilities ---
 
@@ -30,10 +28,10 @@ function newTree (index, size, isMine, isDormant) {
 }
 
 
-const WAIT = 'WAIT'
-const SEED = 'SEED'
-const GROW = 'GROW'
-const COMPLETE = 'COMPLETE'
+const WAIT = 'WAIT';
+const SEED = 'SEED';
+const GROW = 'GROW';
+const COMPLETE = 'COMPLETE';
 class Action {
     constructor(type, targetCellIdx, sourceCellIdx) {
         this.type = type
@@ -73,6 +71,7 @@ class RoundAnalyse{
         this.trees = trees;
         this.sun = sun;
         this.day = (day+1) / 24;
+        this.rday = day;
         this.iter = Math.sqrt(iter);
 
         this.cellI = 9;
@@ -108,11 +107,12 @@ class RoundAnalyse{
         this.wait_mul = 0.2 / this.day;
 
          */
+        this.max_tree = 3;
 
         this.seed_mul = 1;
         this.complete_mul = Math.exp(this.day*6) - 40;
         this.grow_mul = [5, 10, 15];
-        this.wait_mul = 0;
+        this.wait_mul = 1;
     }
 
 
@@ -188,7 +188,7 @@ class RoundAnalyse{
 
 
         // SEED
-        if(nbr_of_trees.total - nbr_of_trees.seeds > 0 && this.sun >= nbr_of_trees.seeds){
+        if(nbr_of_trees.total - nbr_of_trees.size_3 < this.max_tree && this.sun >= nbr_of_trees.seeds && this.rday < 20){
             const bestTree = {
                 score:99,
                 tree:-1,
@@ -235,7 +235,7 @@ class RoundAnalyse{
                 tree:-1,
             }
             for (let i = 0; i < this.trees.length; i += this.treeI) {
-                if (this.trees[i+1] < 3 && this.trees[i+2] && !this.trees[i+3] && this.cells[this.trees[i] * this.cellI + 8] - this.cells[this.trees[i] * this.cellI + 1] < bestTree.score){
+                if (this.rday <= 20 + this.trees[i+1] && this.trees[i+1] < 3 && this.trees[i+2] && !this.trees[i+3] && this.cells[this.trees[i] * this.cellI + 8] - this.cells[this.trees[i] * this.cellI + 1] < bestTree.score){
                     let needed_sun;
                     switch (this.trees[i+1]) {
                         case 0:
@@ -318,7 +318,7 @@ class Game {
         this.max_rec = 100;
         this.max_action_nbr = 0.5;
         this.randomly_choosed_action_nbr = 50;
-        this.sun_strenght = 0;
+        this.sun_strenght = 0.5;
         this.sun_length = 2;
     }
 
@@ -445,7 +445,7 @@ class Game {
                 }
             }
             cells = this.updateSunPotential(cells, action.targetIndex, this.sun_strenght);
-            trees.push(...newTree(action.targetIndex, 0, true, false));
+            trees.push(...newTree(action.targetIndex, 0, true, true));
         }else if(action.action === WAIT){
             if(day < 23){
                 for (let i = 0; i < trees.length; i+=this.treeI) {
