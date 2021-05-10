@@ -307,9 +307,11 @@ class Game {
         this.opponentIsWaiting = 0;
 
         // settings :
-        this.max_rec = 20;
+        this.max_rec = 10;
         this.max_action_nbr = 0;
-        this.randomly_choosed_action_nbr = 20;
+        this.randomly_choosed_action_nbr = 40;
+        this.sun_strenght = 1;
+        this.sun_length = 2;
     }
 
 
@@ -387,36 +389,23 @@ class Game {
         }        */
 
 
-        let to_rem = [];
         let to_add = [];
         let to_check = [];
         to_add.push(...cells[pos].neighbors);
         to_check.push(...cells[pos].neighbors);
-        if(val > 1){
-            to_rem.push(...cells[pos].neighbors);
-        }
 
-        for (let i = 1; i < Math.abs(val); i++) {
+
+        for (let i = 1; i < this.sun_length; i++) {
             let new_check = [];
-            to_check.forEach(spot => {
-                if (spot !== -1){
-                    new_check.push(...cells[spot].neighbors)
+            for (let j = 0; j < to_check.length; j++) {
+                if (to_check[j] !== -1){
+                    new_check.push(cells[to_check[j]].neighbors[j]);
+                }else{
+                    new_check.push(-1);
                 }
-            });
+            }
             to_add.push(...new_check);
             to_check = new_check;
-            if(val > 1 && i < val-1){
-                to_rem.push(...new_check);
-            }
-        }
-
-        if(val > 1){
-            to_rem = [...new Set(to_rem)];
-            to_rem.forEach(spot => {
-                if (spot !== -1 && spot !== pos){
-                    cells[spot].sun_potential -= val-1;
-                }
-            });
         }
 
         to_add = [...new Set(to_add)];
@@ -435,7 +424,7 @@ class Game {
             for (let i = 0; i < trees.length; i++) {
                 if (trees[i].cellIndex === action.targetIndex){
                     sun -= 4;
-                    cells = this.updateSunPotential(cells, trees[i].cellIndex, -3);
+                    cells = this.updateSunPotential(cells, trees[i].cellIndex, -this.sun_strenght);
                     trees.splice(i, 1);
                     break;
                 }
@@ -457,7 +446,6 @@ class Game {
                     }
                     trees[i].size++;
                     trees[i].isDormant = true;
-                    cells = this.updateSunPotential(cells, trees[i].cellIndex, trees[i].size);
                     break;
                 }
             }
@@ -470,6 +458,7 @@ class Game {
                     break;
                 }
             }
+            cells = this.updateSunPotential(cells, action.targetIndex, this.sun_strenght);
             trees.push(new Tree(action.targetIndex, 0, true, false));
         }else if(action.action === WAIT){
             if(day < 23){
@@ -659,30 +648,30 @@ class Game {
         });
 
         this.trees.forEach(tree => {
-            if (tree.size > 0){
-                let to_add = [];
-                let to_check = [];
-                to_add.push(...this.cells[tree.cellIndex].neighbors);
-                to_check.push(...this.cells[tree.cellIndex].neighbors);
+            let to_add = [];
+            let to_check = [];
+            to_add.push(...this.cells[tree.cellIndex].neighbors);
+            to_check.push(...this.cells[tree.cellIndex].neighbors);
 
-                for (let i = 1; i < tree.size; i++) {
-                    let new_check = [];
-                    to_check.forEach(spot => {
-                        if (spot !== -1){
-                            new_check.push(...this.cells[spot].neighbors)
-                        }
-                    });
-                    to_add.push(...new_check);
-                    to_check = new_check;
-                }
-
-                to_add = [...new Set(to_add)];
-                to_add.forEach(spot => {
-                    if (spot !== -1 && spot !== tree.cellIndex){
-                        this.cells[spot].sun_potential += tree.size;
+            for (let i = 1; i < this.sun_length; i++) {
+                let new_check = [];
+                for (let j = 0; j < to_check.length; j++) {
+                    if (to_check[j] !== -1){
+                        new_check.push(this.cells[to_check[j]].neighbors[j]);
+                    }else{
+                        new_check.push(-1);
                     }
-                });
+                }
+                to_add.push(...new_check);
+                to_check = new_check;
             }
+
+            to_add = [...new Set(to_add)];
+            to_add.forEach(spot => {
+                if (spot !== -1 && spot !== tree.cellIndex){
+                    this.cells[spot].sun_potential += this.sun_strenght;
+                }
+            });
         });
     }
 
