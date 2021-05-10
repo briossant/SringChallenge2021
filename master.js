@@ -21,9 +21,10 @@ function getRandomNumber(min,max) {
 
 class Cell {
     constructor(index, richness, neighbors) {
-        this.index = index
-        this.richness = richness
-        this.neighbors = neighbors
+        this.index = index;
+        this.richness = richness;
+        this.neighbors = neighbors;
+        this.sun_potential = 1;
     }
 }
 class Tree {
@@ -68,7 +69,7 @@ class Action {
 }
 
 
-// --- Prediction classes ---
+// --- Zi analyser ---
 
 class RoundAnalyse{
     constructor(score_of_previous_round, trees, cells, play_index, sun, day) {
@@ -98,13 +99,20 @@ class RoundAnalyse{
             this.grow_mul = [1, 3, 5];
         }
 
-         */
 
         this.seed_mul = 1 / Math.pow(this.day,2);
         this.complete_mul = Math.exp(this.day*(23/4));
         this.grow_mul = [20, 40, 120];
         this.grow_mul.map(val => val/(this.day));
+
+
+         */
+
+        this.seed_mul = 1;
+        this.complete_mul = Math.exp(this.day*(23/4));
+        this.grow_mul = [2, 5, 10];
     }
+
 
     getNumberOfTrees() {
         const res = {
@@ -155,18 +163,19 @@ class RoundAnalyse{
         // COMPLETE
         if(nbr_of_trees.size_3 > 0 && this.sun >= 4){
             const bestTree = {
-                score:0,
+                score:99,
                 tree:-1,
             }
             this.trees.forEach(tree => {
-                if (tree.size === 3 && tree.isMine && !tree.isDormant && this.cells[tree.cellIndex].richness > bestTree.score){
-                    bestTree.score = this.cells[tree.cellIndex].richness;
+                if (tree.size === 3 && tree.isMine && !tree.isDormant && this.cells[tree.cellIndex].sun_potential < bestTree.score){
+                    bestTree.score = this.cells[tree.cellIndex].sun_potential;
                     bestTree.tree = tree;
                 }
             });
             if(bestTree.tree !== -1){
                 actions_score.push({
                     play_index: this.play_index,
+                    //score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.complete_mul * this.cells[bestTree.tree.cellIndex].sun_potential,
                     score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.complete_mul,
                     action: COMPLETE,
                     targetIndex: bestTree.tree.cellIndex,
@@ -179,7 +188,7 @@ class RoundAnalyse{
         // SEED
         if(nbr_of_trees.total - nbr_of_trees.seeds > 0 && this.sun >= nbr_of_trees.seeds){
             const bestTree = {
-                score:0,
+                score:99,
                 tree:-1,
                 spot:-1,
             }
@@ -192,8 +201,8 @@ class RoundAnalyse{
                             this.cells[cell].neighbors.forEach(spot => {
                                 if (spot !== -1 ){
                                     new_cells.push(spot);
-                                    if (this.cells[spot].richness > bestTree.score && !this.isOccupied(spot)){
-                                        bestTree.score = this.cells[spot].richness;
+                                    if (this.cells[spot].sun_potential < bestTree.score && this.cells[spot].richness > 0 && !this.isOccupied(spot)){
+                                        bestTree.score = this.cells[spot].sun_potential;
                                         bestTree.tree = tree;
                                         bestTree.spot = spot;
                                     }
@@ -207,7 +216,8 @@ class RoundAnalyse{
             if(bestTree.tree !== -1){
                 actions_score.push({
                     play_index: this.play_index,
-                    score: this.score_of_previous_round + (this.seed_mul * this.cells[bestTree.spot].richness) / Math.pow(nbr_of_trees.total - nbr_of_trees.size_3+1, 2),
+                    //score: this.score_of_previous_round,
+                    score: this.score_of_previous_round + this.seed_mul * this.cells[bestTree.spot].richness / this.cells[bestTree.spot].sun_potential,
                     action: SEED,
                     sourceIndex: bestTree.tree.cellIndex,
                     targetIndex:  bestTree.spot,
@@ -219,11 +229,11 @@ class RoundAnalyse{
         // GROW
         if (this.sun >= 1 && nbr_of_trees.total > nbr_of_trees.size_3){
             const bestTree = {
-                score:0,
+                score:99,
                 tree:-1,
             }
             this.trees.forEach(tree => {
-                if (tree.size < 3 && tree.isMine && !tree.isDormant && this.cells[tree.cellIndex].richness > bestTree.score){
+                if (tree.size < 3 && tree.isMine && !tree.isDormant && this.cells[tree.cellIndex].sun_potential < bestTree.score){
                     let needed_sun;
                     switch (tree.size) {
                         case 0:
@@ -237,7 +247,7 @@ class RoundAnalyse{
                             break;
                     }
                     if (this.sun >= needed_sun){
-                        bestTree.score = this.cells[tree.cellIndex].richness;
+                        bestTree.score = this.cells[tree.cellIndex].sun_potential;
                         bestTree.tree = tree;
                     }
                 }
@@ -245,7 +255,8 @@ class RoundAnalyse{
             if(bestTree.tree !== -1){
                 actions_score.push({
                     play_index: this.play_index,
-                    score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.grow_mul[bestTree.tree.size],
+                    score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.grow_mul[bestTree.tree.size] / this.cells[bestTree.tree.cellIndex].sun_potential,
+                    //score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.grow_mul[bestTree.tree.size],
                     action: GROW,
                     targetIndex: bestTree.tree.cellIndex,
                     sourceIndex: -1,
@@ -257,7 +268,8 @@ class RoundAnalyse{
         //WAIT
         actions_score.push({
             play_index: this.play_index,
-            score: this.score_of_previous_round - this.sun,
+            //score: this.score_of_previous_round - this.sun,
+            score: this.score_of_previous_round,
             action: WAIT,
             sourceIndex: -1,
             targetIndex: -1,
@@ -297,7 +309,7 @@ class Game {
         // settings :
         this.max_rec = 20;
         this.max_action_nbr = 0;
-        this.randomly_choosed_action_nbr = 40;
+        this.randomly_choosed_action_nbr = 20;
     }
 
 
@@ -351,11 +363,79 @@ class Game {
     }
 
 
-    makeAnAction(action, trees, sun, day){
+    updateSunPotential(cells, pos, val) {
+        /*
+
+        const done = [pos];
+        const to_make = [...cells[pos].neighbors];
+        for (let i = 0; i < Math.abs(val); i++) {
+            to_make.forEach(spot => {
+                if(spot!==-1){
+                    if(val > 1 && i < val-1){
+                        cells[spot].sun_potential -= val-1;
+                    }
+                    cells[spot].sun_potential += val;
+                    done.push(spot);
+                    cells[spot].neighbors.forEach(neighbor =>{
+                        if(!done.includes(neighbor) && !to_make.includes(neighbor) && neighbor!==-1){
+                            to_make.push(neighbor);
+                        }
+                    });
+                }
+                to_make.unshift();
+            });
+        }        */
+
+
+        let to_rem = [];
+        let to_add = [];
+        let to_check = [];
+        to_add.push(...cells[pos].neighbors);
+        to_check.push(...cells[pos].neighbors);
+        if(val > 1){
+            to_rem.push(...cells[pos].neighbors);
+        }
+
+        for (let i = 1; i < Math.abs(val); i++) {
+            let new_check = [];
+            to_check.forEach(spot => {
+                if (spot !== -1){
+                    new_check.push(...cells[spot].neighbors)
+                }
+            });
+            to_add.push(...new_check);
+            to_check = new_check;
+            if(val > 1 && i < val-1){
+                to_rem.push(...new_check);
+            }
+        }
+
+        if(val > 1){
+            to_rem = [...new Set(to_rem)];
+            to_rem.forEach(spot => {
+                if (spot !== -1 && spot !== pos){
+                    cells[spot].sun_potential -= val-1;
+                }
+            });
+        }
+
+        to_add = [...new Set(to_add)];
+        to_add.forEach(spot => {
+            if (spot !== -1 && spot !== pos){
+                cells[spot].sun_potential += val;
+            }
+        });
+
+        return cells;
+    }
+
+
+    makeAnAction(action, trees, cells, sun, day){
         if(action.action === COMPLETE){
             for (let i = 0; i < trees.length; i++) {
                 if (trees[i].cellIndex === action.targetIndex){
                     sun -= 4;
+                    cells = this.updateSunPotential(cells, trees[i].cellIndex, -3);
                     trees.splice(i, 1);
                     break;
                 }
@@ -377,6 +457,7 @@ class Game {
                     }
                     trees[i].size++;
                     trees[i].isDormant = true;
+                    cells = this.updateSunPotential(cells, trees[i].cellIndex, trees[i].size);
                     break;
                 }
             }
@@ -404,6 +485,7 @@ class Game {
 
         return {
             trees:trees,
+            cells:cells,
             sun:sun,
             day:day,
         };
@@ -421,12 +503,12 @@ class Game {
         console.error(`day : ${this.day}`);
         const first_analyse = new RoundAnalyse(0, this.trees, this.cells, -1, this.mySun, this.day);
         const first_actions_layer = first_analyse.getActionsScore();
-
         let last_actions_layer = [];
 
         first_actions_layer.forEach(action=>{
-            const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(this.trees)), this.mySun, this.day);
+            const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(this.trees)), JSON.parse(JSON.stringify(this.cells)), this.mySun, this.day);
             action.trees = action_made.trees;
+            action.cells = action_made.cells;
             action.sun = action_made.sun;
             action.day = action_made.day;
             action.act_list = [action.action]
@@ -447,9 +529,12 @@ class Game {
                     new_actions_layer.push(action);
                 }else{
                     is_still_updating = true;
-                    const returned_actions = (new RoundAnalyse(action.score, action.trees, this.cells, action.play_index, action.sun, action.day)).getActionsScore();
+
+                    const returned_actions = (new RoundAnalyse(action.score, action.trees, action.cells, action.play_index, action.sun, action.day)).getActionsScore();
+
                     returned_actions.map(val => {
                         val.trees = action.trees;
+                        val.cells = action.cells;
                         val.sun = action.sun;
                         val.day = action.day;
                         val.act_list = [...action.act_list];
@@ -469,6 +554,7 @@ class Game {
             }
 
             // keep the best action for the next iter
+
 
             const best_action_by_type = {
                 'SEED': {
@@ -525,8 +611,9 @@ class Game {
                 if (action.day > 23){
                     last_actions_layer.push(action);
                 } else {
-                    const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(action.trees)), action.sun, action.day);
+                    const action_made = this.makeAnAction(action, JSON.parse(JSON.stringify(action.trees)), JSON.parse(JSON.stringify(action.cells)), action.sun, action.day);
                     action.trees = action_made.trees;
+                    action.cells = action_made.cells;
                     action.sun = action_made.sun;
                     action.day = action_made.day;
                     last_actions_layer.push(action);
@@ -565,7 +652,44 @@ class Game {
     }
 
 
+    getSunPotential() {
+        this.cells.map(val => {
+            val.sun_potential = 1;
+            return val;
+        });
+
+        this.trees.forEach(tree => {
+            if (tree.size > 0){
+                let to_add = [];
+                let to_check = [];
+                to_add.push(...this.cells[tree.cellIndex].neighbors);
+                to_check.push(...this.cells[tree.cellIndex].neighbors);
+
+                for (let i = 1; i < tree.size; i++) {
+                    let new_check = [];
+                    to_check.forEach(spot => {
+                        if (spot !== -1){
+                            new_check.push(...this.cells[spot].neighbors)
+                        }
+                    });
+                    to_add.push(...new_check);
+                    to_check = new_check;
+                }
+
+                to_add = [...new Set(to_add)];
+                to_add.forEach(spot => {
+                    if (spot !== -1 && spot !== tree.cellIndex){
+                        this.cells[spot].sun_potential += tree.size;
+                    }
+                });
+            }
+        });
+    }
+
+
     getNextAction() {
+        this.getSunPotential();
+
         return this.predict();
     }
 }
@@ -574,7 +698,7 @@ class Game {
 
 
 
-// --- get and send data ---
+// --- Inputs / outputs / game loop ---
 
 const game = new Game()
 
