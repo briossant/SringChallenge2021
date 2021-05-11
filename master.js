@@ -117,7 +117,7 @@ class RoundAnalyse {
 
         this.max_tree = 4;
 
-        this.seed_mul = 1;
+        this.seed_mul = 50;
         this.complete_mul = Math.exp(this.day*6) - 30;
         this.grow_mul = [5, 10, 15];
         this.wait_mul = 1;
@@ -196,42 +196,69 @@ class RoundAnalyse {
 
 
         // SEED
-        if(nbr_of_trees.total - nbr_of_trees.size_3 < this.max_tree && this.sun >= nbr_of_trees.seeds && this.rday < 20){
-            const bestTree = {
-                score:99,
-                tree:-1,
-                spot:-1,
-            }
-            for (let i = 0; i < this.trees.length; i += this.treeI) {
-                if (this.trees[i+2] && this.trees[i+1] > 0 && !this.trees[i+3]){
-                    let cells_to_check = [this.trees[i]];
-                    for (let j = 0; j < this.trees[i+1]; j++) {
-                        let new_cells = [];
-                        cells_to_check.forEach(cell =>{
-                            this.cells.slice(cell * this.cellI + 2, cell * this.cellI + 7).forEach(spot => {
-                                if (spot !== -1 ){
-                                    new_cells.push(spot);
-                                    if (this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1] < bestTree.score && this.cells[spot * this.cellI + 1] > 0 && !this.isOccupied(spot)){
-                                        bestTree.score = this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1];
-                                        bestTree.tree = this.trees.slice(i, i+this.treeI);
-                                        bestTree.spot = spot;
+        if(this.sun >= nbr_of_trees.seeds && this.rday < 20){
+            if(nbr_of_trees.total - nbr_of_trees.size_3 < this.max_tree ||  nbr_of_trees.seeds === 0){
+                let mul = 1;
+                if(nbr_of_trees.seeds === 0){
+                    mul = this.seed_mul;
+                }
+                const bestTree = {
+                    score: 99,
+                    tree: -1,
+                    spot: -1,
+                }
+                /*for (let i = 0; i < this.trees.length; i += this.treeI) {
+                    if (this.trees[i+2] && this.trees[i+1] > 0 && !this.trees[i+3]){
+                        let cells_to_check = [this.trees[i]];
+                        for (let j = 0; j < this.trees[i+1]; j++) {
+                            let new_cells = [];
+                            cells_to_check.forEach(cell =>{
+                                this.cells.slice(cell * this.cellI + 2, cell * this.cellI + 7).forEach(spot => {
+                                    if (spot !== -1 ){
+                                        new_cells.push(spot);
+                                        if (this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1] < bestTree.score && this.cells[spot * this.cellI + 1] > 0 && !this.isOccupied(spot)){
+                                            bestTree.score = this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1];
+                                            bestTree.tree = this.trees.slice(i, i+this.treeI);
+                                            bestTree.spot = spot;
+                                        }
                                     }
-                                }
+                                });
                             });
+                            cells_to_check = new_cells;
+                        }
+                    }
+                }*/
+
+                for (let i = 0; i < this.trees.length; i += this.treeI) {
+                    if (this.trees[i + 2] && this.trees[i + 1] > 1 && !this.trees[i + 3]){
+                        let neigh = this.cells.slice(this.trees[i] * this.cellI + 2, this.trees[i] * this.cellI + 7);
+                        let cells_to_check = [];
+                        for (let k = 0; k < 6; k++) {
+                            if (neigh[k] !== -1){
+                                cells_to_check.push(this.cells[neigh[k] * this.cellI + 2 + ((k + 1) % 6)]);
+                            }
+                        }
+                        cells_to_check.forEach(spot => {
+                            if (spot !== -1){
+                                if (this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1] < bestTree.score && this.cells[spot * this.cellI + 1] > 0 && !this.isOccupied(spot)){
+                                    bestTree.score = this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1];
+                                    bestTree.tree = this.trees.slice(i, i + this.treeI);
+                                    bestTree.spot = spot;
+                                }
+                            }
                         });
-                        cells_to_check = new_cells;
                     }
                 }
-            }
-            if(bestTree.tree !== -1){
-                actions_score.push({
-                    play_index: this.play_index,
-                    //score: this.score_of_previous_round,
-                    score: this.score_of_previous_round + (this.seed_mul * this.cells[bestTree.spot * this.cellI + 1] / this.cells[bestTree.spot * this.cellI + 8]) / this.iter,
-                    action: SEED,
-                    sourceIndex: bestTree.tree[0],
-                    targetIndex:  bestTree.spot,
-                });
+                if (bestTree.tree !== -1){
+                    actions_score.push({
+                        play_index: this.play_index,
+                        //score: this.score_of_previous_round,
+                        score: this.score_of_previous_round + (mul * this.cells[bestTree.spot * this.cellI + 1] / this.cells[bestTree.spot * this.cellI + 8]) / this.iter,
+                        action: SEED,
+                        sourceIndex: bestTree.tree[0],
+                        targetIndex: bestTree.spot,
+                    });
+                }
             }
         }
 
@@ -323,11 +350,11 @@ class Game {
         this.cellI = 9;
         this.treeI = 4;
 
-        this.time_stop = 75;
+        this.time_stop = 80;
 
         this.max_rec = 100;
         this.randomly_choosed_action_nbr = 150;
-        this.sun_strenght = 1;
+        this.sun_strenght = 0;
         this.sun_length = 2;
     }
 
@@ -384,9 +411,6 @@ class Game {
 
 
     updateSunPotential(cells, pos, val) {
-        if(val === 0){
-            return cells;
-        }
         let to_add = cells.slice(pos * this.cellI + 2, pos * this.cellI + 7);
         let to_check = to_add.slice(0);
 
@@ -420,7 +444,9 @@ class Game {
             for (let i = 0; i < trees.length; i+=this.treeI) {
                 if (trees[i] === action.targetIndex){
                     sun -= 4;
-                    cells = this.updateSunPotential(cells, trees[i], -this.sun_strenght);
+                    if(this.sun_strenght !== 0){
+                        cells = this.updateSunPotential(cells, trees[i], -this.sun_strenght);
+                    }
                     trees.splice(i, this.treeI);
                     break;
                 }
@@ -454,7 +480,9 @@ class Game {
                     break;
                 }
             }
-            cells = this.updateSunPotential(cells, action.targetIndex, this.sun_strenght);
+            if(this.sun_strenght !== 0){
+                cells = this.updateSunPotential(cells, action.targetIndex, this.sun_strenght);
+            }
             trees.push(...newTree(action.targetIndex, 0, true, true));
         }else if(action.action === WAIT){
             if(day < 23){
