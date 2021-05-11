@@ -323,14 +323,14 @@ class Game {
         this.cellI = 9;
         this.treeI = 4;
 
-        this.time_stop = 80;
+        this.time_stop = 75;
 
         this.max_rec = 100;
-        this.max_action_nbr = 0.5;
-        this.randomly_choosed_action_nbr = 50;
+        this.randomly_choosed_action_nbr = 150;
         this.sun_strenght = 1;
         this.sun_length = 2;
     }
+
 
 
     castShadows(index, trees, day) {
@@ -579,16 +579,17 @@ class Game {
                     new_actions_layer.splice(value.index, 1);
                 }
             }
-            let nbr_of_rdm_action = this.randomly_choosed_action_nbr;
-            if (nbr_of_rdm_action > new_actions_layer.length){
-                nbr_of_rdm_action = new_actions_layer.length;
+
+            if (this.randomly_choosed_action_nbr > new_actions_layer.length){
+                sorted_actions_layer.push(...new_actions_layer);
+            }else{
+                for (let j = 0; j < this.randomly_choosed_action_nbr; j++) {
+                    const index = getRandomInt(0, new_actions_layer.length)
+                    sorted_actions_layer.push(new_actions_layer[index]);
+                    new_actions_layer.splice(index, 1);
+                }
             }
 
-            for (let j = 0; j < nbr_of_rdm_action; j++) {
-                const index = getRandomInt(0, new_actions_layer.length)
-                sorted_actions_layer.push(new_actions_layer[index]);
-                new_actions_layer.splice(index, 1);
-            }
 
             last_actions_layer = [];
             sorted_actions_layer.forEach(action => {
@@ -640,6 +641,7 @@ class Game {
     }
 
 
+
     getSunPotential() {
         for (let i = 0; i < this.cells.length; i += this.cellI) {
             this.cells[i+8] = 1;
@@ -673,6 +675,7 @@ class Game {
             });
         }
     }
+
 
 
     getNextAction() {
