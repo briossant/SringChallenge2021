@@ -177,8 +177,8 @@ class RoundAnalyse {
                 tree:-1,
             }
             for (let i = 0; i < this.trees.length; i += this.treeI) {
-                if (this.trees[i+1] === 3 && this.trees[i+2] && !this.trees[i+3] && this.cells[this.trees[i] * this.cellI + 8] - this.cells[this.trees[i] * this.cellI + 1] < bestTree.score){
-                    bestTree.score = this.cells[this.trees[i] * this.cellI + 8] - this.cells[this.trees[i] * this.cellI + 1];
+                if (this.trees[i+1] === 3 && this.trees[i+2] && !this.trees[i+3] && this.cells[this.trees[i] * this.cellI + 8] / this.cells[this.trees[i] * this.cellI + 1] < bestTree.score){
+                    bestTree.score = this.cells[this.trees[i] * this.cellI + 8] / this.cells[this.trees[i] * this.cellI + 1];
                     bestTree.tree = this.trees.slice(i,i+this.treeI);
                 }
             }
@@ -211,8 +211,8 @@ class RoundAnalyse {
                             this.cells.slice(cell * this.cellI + 2, cell * this.cellI + 7).forEach(spot => {
                                 if (spot !== -1 ){
                                     new_cells.push(spot);
-                                    if (this.cells[spot * this.cellI + 8] - this.cells[spot * this.cellI + 1] < bestTree.score && this.cells[spot * this.cellI + 1] > 0 && !this.isOccupied(spot)){
-                                        bestTree.score = this.cells[spot * this.cellI + 8] - this.cells[spot * this.cellI + 1];
+                                    if (this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1] < bestTree.score && this.cells[spot * this.cellI + 1] > 0 && !this.isOccupied(spot)){
+                                        bestTree.score = this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1];
                                         bestTree.tree = this.trees.slice(i, i+this.treeI);
                                         bestTree.spot = spot;
                                     }
@@ -243,7 +243,7 @@ class RoundAnalyse {
                 tree:-1,
             }
             for (let i = 0; i < this.trees.length; i += this.treeI) {
-                if (this.rday <= 20 + this.trees[i+1] && this.trees[i+1] < 3 && this.trees[i+2] && !this.trees[i+3] && this.cells[this.trees[i] * this.cellI + 8] - this.cells[this.trees[i] * this.cellI + 1] < bestTree.score){
+                if (this.rday <= 20 + this.trees[i+1] && this.trees[i+1] < 3 && this.trees[i+2] && !this.trees[i+3] && this.cells[this.trees[i] * this.cellI + 8] / this.cells[this.trees[i] * this.cellI + 1] < bestTree.score){
                     let needed_sun;
                     switch (this.trees[i+1]) {
                         case 0:
@@ -257,7 +257,7 @@ class RoundAnalyse {
                             break;
                     }
                     if (this.sun >= needed_sun){
-                        bestTree.score = this.cells[this.trees[i] * this.cellI + 8] - this.cells[this.trees[i] * this.cellI + 1];
+                        bestTree.score = this.cells[this.trees[i] * this.cellI + 8] / this.cells[this.trees[i] * this.cellI + 1];
                         bestTree.tree = this.trees.slice(i,i+this.treeI);
                     }
                 }
@@ -328,7 +328,7 @@ class Game {
         this.max_rec = 100;
         this.max_action_nbr = 0.5;
         this.randomly_choosed_action_nbr = 50;
-        this.sun_strenght = 1.2;
+        this.sun_strenght = 1;
         this.sun_length = 2;
     }
 
@@ -395,7 +395,7 @@ class Game {
             let new_check = [];
             for (let j = 0; j < to_check.length; j++) {
                 if (to_check[j] !== -1){
-                    new_check.push(cells[to_check[j] * this.cellI + 3 +j]);
+                    new_check.push(cells[to_check[j] * this.cellI + 2 + j]);
                 }else{
                     new_check.push(-1);
                 }
@@ -644,6 +644,9 @@ class Game {
         for (let i = 0; i < this.cells.length; i += this.cellI) {
             this.cells[i+8] = 1;
         }
+        if(this.sun_strenght === 0){
+            return;
+        }
 
         for (let i = 0; i < this.trees.length; i += this.treeI) {
             let to_add = this.cells.slice(this.trees[i] * this.cellI + 2, this.trees[i] * this.cellI + 7);
@@ -653,7 +656,7 @@ class Game {
                 let new_check = [];
                 for (let j = 0; j < to_check.length; j++) {
                     if (to_check[j] !== -1){
-                        new_check.push(this.cells[to_check[j] * this.cellI + 3 +j]);
+                        new_check.push(this.cells[to_check[j] * this.cellI + 2 +j]);
                     }else{
                         new_check.push(-1);
                     }
