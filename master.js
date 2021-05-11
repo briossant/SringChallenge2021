@@ -4,6 +4,8 @@ let rounds_played = 0;
 
 
 
+
+
 // --- utilities ---
 
 function getRandomInt(min,max) {
@@ -11,8 +13,10 @@ function getRandomInt(min,max) {
 }
 
 function getRandomNumber(min,max) {
-    return Math.random() * (max-min) + min
+    return Math.random() * (max-min) + min;
 }
+
+
 
 
 
@@ -60,9 +64,12 @@ class Action {
 }
 
 
+
+
+
 // --- Zi analyser ---
 
-class RoundAnalyse{
+class RoundAnalyse {
     constructor(score_of_previous_round, trees, cells, play_index, sun, day, iter) {
         // inputs :
         this.play_index = play_index;
@@ -107,10 +114,11 @@ class RoundAnalyse{
         this.wait_mul = 0.2 / this.day;
 
          */
-        this.max_tree = 3;
+
+        this.max_tree = 4;
 
         this.seed_mul = 1;
-        this.complete_mul = Math.exp(this.day*6) - 40;
+        this.complete_mul = Math.exp(this.day*6) - 30;
         this.grow_mul = [5, 10, 15];
         this.wait_mul = 1;
     }
@@ -157,7 +165,7 @@ class RoundAnalyse{
     }
 
 
-    getActionsScore(){
+    getActionsScore() {
         const actions_score = [];
         const nbr_of_trees = this.getNumberOfTrees();
 
@@ -293,6 +301,8 @@ class RoundAnalyse{
 
 
 
+
+
 // --- Da game manager ---
 
 class Game {
@@ -313,17 +323,17 @@ class Game {
         this.cellI = 9;
         this.treeI = 4;
 
-        this.time_stop = 60;
+        this.time_stop = 80;
 
         this.max_rec = 100;
         this.max_action_nbr = 0.5;
         this.randomly_choosed_action_nbr = 50;
-        this.sun_strenght = 0.5;
+        this.sun_strenght = 1.2;
         this.sun_length = 2;
     }
 
 
-    castShadows(index, trees, day){
+    castShadows(index, trees, day) {
         const pos_to_check = [];
         let next_pos = index;
         for (let i = 0; i < 3; i++) {
@@ -405,7 +415,7 @@ class Game {
     }
 
 
-    makeAnAction(action, trees, cells, sun, day){
+    makeAnAction(action, trees, cells, sun, day) {
         if(action.action === COMPLETE){
             for (let i = 0; i < trees.length; i+=this.treeI) {
                 if (trees[i] === action.targetIndex){
@@ -466,7 +476,7 @@ class Game {
     }
 
 
-    predict(){
+    predict() {
         //console.error(`start predictions time : ${(new Date().getTime()) - timeChecker} ms`);
 
 
