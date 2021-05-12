@@ -79,7 +79,7 @@ class RoundAnalyse {
         this.sun = sun;
         this.day = (day+1) / 24;
         this.rday = day;
-        this.iter = Math.sqrt(iter);
+        this.iter = iter;
 
         this.cellI = 9;
         this.treeI = 4;
@@ -115,12 +115,12 @@ class RoundAnalyse {
 
          */
 
-        this.max_tree = 4;
+        this.max_tree = 5;
 
         this.seed_mul = 50;
         this.complete_mul = Math.exp(this.day*6) - 30;
         this.grow_mul = [5, 10, 15];
-        this.wait_mul = 1;
+        this.wait_mul = 10/day;
     }
 
 
@@ -354,7 +354,7 @@ class Game {
 
         this.max_rec = 100;
         this.randomly_choosed_action_nbr = 150;
-        this.sun_strenght = 0;
+        this.sun_strenght = 0.4;
         this.sun_length = 2;
     }
 
