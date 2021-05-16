@@ -4,7 +4,7 @@ let rounds_played = 0;
 
 
 
-// last rank : 540 gold
+// last rank : 250 gold
 
 
 
@@ -72,7 +72,7 @@ class Action {
 // --- Zi analyser ---
 
 class RoundAnalyse {
-    constructor(score_of_previous_round, trees, cells, play_index, sun, day, iter, nutrients) {
+    constructor(score_of_previous_round, trees, cells, play_index, sun, day, iter) {
         // inputs :
         this.play_index = play_index;
         this.score_of_previous_round = score_of_previous_round;
@@ -82,7 +82,6 @@ class RoundAnalyse {
         this.day = (day+1) / 24;
         this.rday = day;
         this.iter = (iter);
-        this.nutrients = nutrients;
 
         this.cellI = 9;
         this.treeI = 4;
@@ -90,32 +89,12 @@ class RoundAnalyse {
         // settings :
 
         this.max_tree = 5;
-
-        this.mulA = 0.6;
-        this.mulB = 0.8;
-        this.mulC = 1;
+        this.change_commplete_day = 19;
 
         this.seed_mul = 15;
-        this.start_seed_mul = 1;
-        this.seed_2_phase_day = 7;
-
-        this.change_commplete = false;
-        this.complete_mul = 1.1 * (-3*Math.pow(this.day, 2) + 4.5 * this.day -1.3);
+        this.complete_mul = 1 * (-3*Math.pow(this.day, 2) + 4.5 * this.day -1.5);
         this.grow_mul = [5, 10, 15];
         this.wait_mul = 10/(day+1);
-        if(this.nutrients < 0){
-            this.mulB = 0.3;
-            this.mulA = 0.7;
-            this.complete_mul *=2;
-        }
-        if(day > 17){
-            this.complete_mul *= 3;
-        }
-        if(this.nutrients < 5){
-            this.change_commplete = true;
-            //this.wait_mul = -1;
-            //this.grow_mul = [1,1,1];
-        }
     }
 
 
@@ -170,10 +149,11 @@ class RoundAnalyse {
             if(this.play_index === -1){
                 for (let i = 0; i < this.trees.length; i += this.treeI) {
                 if (this.trees[i+1] === 3 && this.trees[i+2] && !this.trees[i+3]){
-                    let score = this.score_of_previous_round + (Math.exp(this.cells[this.trees[i]*this.cellI+1] * this.mulA)  
-                        + Math.exp(nbr_of_trees.size_3*this.mulB) + Math.exp(this.cells[this.trees[i]*this.cellI+8]*this.mulC)) * this.complete_mul / this.iter;
-                    if(this.change_commplete){
-                        score = this.score_of_previous_round + (Math.exp(this.cells[this.trees[i]*this.cellI+1]) * 2) / this.iter;
+                    let score = this.score_of_previous_round + (this.cells[this.trees[i]*this.cellI+1] * this.complete_mul 
+                        * nbr_of_trees.size_3 * Math.exp(this.cells[this.trees[i]*this.cellI+8])) / this.iter;
+                    if(this.rday >= this.change_commplete_day){
+                        score = this.score_of_previous_round + (this.cells[this.trees[i]*this.cellI+1] * this.complete_mul 
+                        * 50) / this.iter;
                     }
                     actions_score.push({
                     play_index: this.play_index,
@@ -197,10 +177,11 @@ class RoundAnalyse {
                 }
             }
             if(bestTree.tree !== -1){
-                let score = this.score_of_previous_round + (Math.exp(this.cells[bestTree.tree[0] * this.cellI + 1]*this.mulA)
-                     + Math.exp(nbr_of_trees.size_3*this.mulB) + Math.exp(this.cells[bestTree.tree[0]*this.cellI+8] * this.mulC)) * this.complete_mul / this.iter;
-                if(this.change_commplete){
-                    score = this.score_of_previous_round + ( Math.exp(this.cells[bestTree.tree[0]*this.cellI+1]) * 2) / this.iter;
+                let score = this.score_of_previous_round + (this.cells[bestTree.tree[0] * this.cellI + 1] 
+                    * this.complete_mul * nbr_of_trees.size_3 * Math.exp(this.cells[bestTree.tree[0]*this.cellI+8])) / this.iter;
+                if(this.rday >= this.change_commplete_day){
+                    score = this.score_of_previous_round + (this.cells[bestTree.tree[0]*this.cellI+1] * this.complete_mul 
+                        * 50) / this.iter;
                 }
                 actions_score.push({
                     play_index: this.play_index,
@@ -221,8 +202,6 @@ class RoundAnalyse {
                 let mul = 1;
                 if(nbr_of_trees.seeds === 0){
                     mul = this.seed_mul;
-                }else if (this.rday < this.seed_2_phase_day){
-                    mul = this.start_seed_mul;
                 }
                 const bestTree = {
                     score: 9999,
@@ -230,7 +209,7 @@ class RoundAnalyse {
                     spot: -1,
                 }
 
-                /*for (let i = 0; i < this.trees.length; i += this.treeI) {
+                for (let i = 0; i < this.trees.length; i += this.treeI) {
                     if (this.trees[i + 2] && this.trees[i + 1] > 1 && !this.trees[i + 3]){
                         let neigh = this.cells.slice(this.trees[i] * this.cellI + 2, this.trees[i] * this.cellI + 8);
                         let cells_to_check = [];
@@ -249,7 +228,7 @@ class RoundAnalyse {
                             }
                         });
                     }
-                }*/
+                }
                 if(bestTree.tree === -1) {
                     for (let i = 0; i < this.trees.length; i += this.treeI) {
                     if (this.trees[i+2] && this.trees[i+1] > 1 && !this.trees[i+3]){
@@ -260,12 +239,8 @@ class RoundAnalyse {
                                 this.cells.slice(cell * this.cellI + 2, cell * this.cellI + 8).forEach(spot => {
                                     if (spot !== -1 ){
                                         new_cells.push(spot);
-                                        let div = this.cells[spot * this.cellI + 1];
-                                        if(this.rday < this.seed_2_phase_day ){
-                                            div = 1 + this.cells[spot * this.cellI + 1]/10;
-                                        }
-                                        if (this.cells[spot * this.cellI + 8] / div < bestTree.score && this.cells[spot * this.cellI + 1] > 0 && !this.isOccupied(spot)){
-                                            bestTree.score = this.cells[spot * this.cellI + 8] / div;
+                                        if (this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1] < bestTree.score && this.cells[spot * this.cellI + 1] > 0 && !this.isOccupied(spot)){
+                                            bestTree.score = this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1];
                                             bestTree.tree = this.trees.slice(i, i+this.treeI);
                                             bestTree.spot = spot;
                                         }
@@ -576,7 +551,7 @@ class Game {
 
         // Get all possible action to play next round
         console.error(`day : ${this.day}`);
-        const first_analyse = new RoundAnalyse(0, this.trees, this.cells, -1, this.mySun, this.day, 1, this.nutrients);
+        const first_analyse = new RoundAnalyse(0, this.trees, this.cells, -1, this.mySun, this.day, 1);
         const first_actions_layer = first_analyse.getActionsScore();
         let last_actions_layer = [];
 
@@ -605,7 +580,7 @@ class Game {
                 }else{
                     is_still_updating = true;
 
-                    const returned_actions = (new RoundAnalyse(action.score, action.trees, action.cells, action.play_index, action.sun, action.day, i+1, this.nutrients)).getActionsScore();
+                    const returned_actions = (new RoundAnalyse(action.score, action.trees, action.cells, action.play_index, action.sun, action.day, i+1)).getActionsScore();
 
                     returned_actions.map(val => {
                         val.trees = action.trees;
@@ -805,60 +780,6 @@ for (let i = 0; i < numberOfCells; i++) {
 }
 
 
-const nineWhileNine = (
-    '-| Nine While Nine ~~ Sister of Mercy |-\n' +
-    'When it\'s passing strange\n' +
-    'And I\'m waiting for the train\n' +
-    'Caught up on this line again\n' +
-    'And it\'s passing slowly\n' +
-    'Killing time but it\'s better\n' +
-    'Than living in what will come\n' +
-    'And I\'ve still got some\n' +
-    'Of your letters with me\n' +
-    'And I thought sometimes\n' +
-    'Or I read too much and I think you know\n' +
-    'Let\'s drink to the dead lying under the water\n' +
-    'And the cost of the blood on the driven snow\n' +
-    'And the lipstick on my cigarettes\n' +
-    'Frost upon the window pane\n' +
-    'Nine while nine\n' +
-    'And I\'m waiting for the train\n' +
-    'She said, "Do you remember a time when angels?\n' +
-    'Do you remember a time when fear\n' +
-    'In the days when I was stronger\n' +
-    'In the days when you were here"\n' +
-    'She said, "When days had no beginning\n' +
-    'While days had no end when shadows grew no longer\n' +
-    'I knew no other friend but you were wild"\n' +
-    'You were wild\n' +
-    'Frost upon these cigarettes\n' +
-    'Lipstick on the window pane\n' +
-    'And I\'ve lost all sense of the world outside\n' +
-    'But I can\'t forget so I call your name\n' +
-    'And I\'m looking for a life for me\n' +
-    'And I\'m looking for a life for you\n' +
-    'And I\'m talking to myself again\n' +
-    'And it\'s so damn cold it\'s just not true\n' +
-    'And I\'m walking through the rain\n' +
-    'Trying to hold on waiting for the train\n' +
-    'And I\'m only looking for what you want\n' +
-    'But it\'s lonely here and I think you knew\n' +
-    'And I\'m, and I\'m waiting\n' +
-    'And I wait in vain\n' +
-    'Nine while nine\n' +
-    'And I\'m waiting for the train\n' +
-    'And I\'m waiting\n' +
-    'And I wait in vain\n' +
-    'Nine while nine\n' +
-    'And I\'m waiting for the train\n' +
-    'And I\'m waiting\n' +
-    'And I wait in vain\n' +
-    'Nine while nine\n' +
-    'I\'m waiting for the train\n' +
-    '-| END |-'
-).split('\n');
-
-
 while (true) {
     game.day = parseInt(readline());
     game.nutrients = parseInt(readline());
@@ -895,7 +816,47 @@ while (true) {
     const total_time = (new Date().getTime()) - timeChecker;
     console.error(`Total time : ${total_time} ms`);
 
-    let message = nineWhileNine[(rounds_played-1) % nineWhileNine.length];
+    let message;
+    switch (getRandomInt(0, 12)){
+        case 0:
+            message = `${total_time} ms, am I slow ?`;
+            break;
+        case 1:
+            if (game.day > 16){
+                if (game.myScore > game.opponentScore){
+                    message = `pfiou, to easy`;
+                } else if (game.myScore < game.opponentScore){
+                    message = `You better be prepared for my comeback`;
+                } else if (game.myScore === game.opponentScore){
+                    message = `:| it's boring when we have the same score`;
+                }
+            }else{
+                if (game.myScore > game.opponentScore){
+                    message = `Haha I'm winning ! (for now at least)`;
+                } else if (game.myScore < game.opponentScore){
+                    message = `Gnagnagna, let me catch you up, at least a little`;
+                } else if (game.myScore === game.opponentScore){
+                    message = `lalalalala, I am still waiting for the action`;
+                }
+            }
+            break;
+        case 2:
+            message = `let's ${action.type}`;
+            break;
+        case 3:
+            if(game.mySun > 10){
+                message = `Wow, I'm pretty rich with all this sun`;
+            }else{
+                message = `What a rainy day, give me some sun pleeaaase`;
+            }
+            break;
+        default:
+            message = 'NONE';
+    }
 
-    console.log(action.toString(), message);
+    if(message === 'NONE'){
+        console.log(action.toString());
+    }else{
+        console.log(action.toString(), message);
+    }
 }
