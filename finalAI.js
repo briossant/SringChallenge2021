@@ -4,8 +4,6 @@ let rounds_played = 0;
 
 
 
-// last rank : 250 gold
-
 
 
 // --- utilities ---
@@ -148,50 +146,50 @@ class RoundAnalyse {
         if(nbr_of_trees.size_3 > 0 && this.sun >= 4){
             if(this.play_index === -1){
                 for (let i = 0; i < this.trees.length; i += this.treeI) {
-                if (this.trees[i+1] === 3 && this.trees[i+2] && !this.trees[i+3]){
-                    let score = this.score_of_previous_round + (this.cells[this.trees[i]*this.cellI+1] * this.complete_mul 
-                        * nbr_of_trees.size_3 * Math.exp(this.cells[this.trees[i]*this.cellI+8])) / this.iter;
-                    if(this.rday >= this.change_commplete_day){
-                        score = this.score_of_previous_round + (this.cells[this.trees[i]*this.cellI+1] * this.complete_mul 
-                        * 50) / this.iter;
+                    if (this.trees[i+1] === 3 && this.trees[i+2] && !this.trees[i+3]){
+                        let score = this.score_of_previous_round + (this.cells[this.trees[i]*this.cellI+1] * this.complete_mul
+                            * nbr_of_trees.size_3 * Math.exp(this.cells[this.trees[i]*this.cellI+8])) / this.iter;
+                        if(this.rday >= this.change_commplete_day){
+                            score = this.score_of_previous_round + (this.cells[this.trees[i]*this.cellI+1] * this.complete_mul
+                                * 50) / this.iter;
+                        }
+                        actions_score.push({
+                            play_index: this.play_index,
+                            //score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.complete_mul * this.cells[bestTree.tree.cellIndex].sun_potential,
+                            score: score,
+                            action: COMPLETE,
+                            targetIndex: this.trees[i],
+                            sourceIndex: -1,
+                        });
                     }
-                    actions_score.push({
-                    play_index: this.play_index,
-                    //score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.complete_mul * this.cells[bestTree.tree.cellIndex].sun_potential,
-                    score: score,
-                    action: COMPLETE,
-                    targetIndex: this.trees[i],
-                    sourceIndex: -1,
-                });
                 }
-            }
             }else{
                 const bestTree = {
-                score:-9999,
-                tree:-1,
-            }
-            for (let i = 0; i < this.trees.length; i += this.treeI) {
-                if (this.trees[i+1] === 3 && this.trees[i+2] && !this.trees[i+3] && this.cells[this.trees[i] * this.cellI + 8] * this.cells[this.trees[i] * this.cellI + 1] > bestTree.score){
-                    bestTree.score = this.cells[this.trees[i] * this.cellI + 8] * this.cells[this.trees[i] * this.cellI + 1];
-                    bestTree.tree = this.trees.slice(i,i+this.treeI);
+                    score:-9999,
+                    tree:-1,
                 }
-            }
-            if(bestTree.tree !== -1){
-                let score = this.score_of_previous_round + (this.cells[bestTree.tree[0] * this.cellI + 1] 
-                    * this.complete_mul * nbr_of_trees.size_3 * Math.exp(this.cells[bestTree.tree[0]*this.cellI+8])) / this.iter;
-                if(this.rday >= this.change_commplete_day){
-                    score = this.score_of_previous_round + (this.cells[bestTree.tree[0]*this.cellI+1] * this.complete_mul 
-                        * 50) / this.iter;
+                for (let i = 0; i < this.trees.length; i += this.treeI) {
+                    if (this.trees[i+1] === 3 && this.trees[i+2] && !this.trees[i+3] && this.cells[this.trees[i] * this.cellI + 8] * this.cells[this.trees[i] * this.cellI + 1] > bestTree.score){
+                        bestTree.score = this.cells[this.trees[i] * this.cellI + 8] * this.cells[this.trees[i] * this.cellI + 1];
+                        bestTree.tree = this.trees.slice(i,i+this.treeI);
+                    }
                 }
-                actions_score.push({
-                    play_index: this.play_index,
-                    //score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.complete_mul * this.cells[bestTree.tree.cellIndex].sun_potential,
-                    score: score,
-                    action: COMPLETE,
-                    targetIndex: bestTree.tree[0],
-                    sourceIndex: -1,
-                });
-            }
+                if(bestTree.tree !== -1){
+                    let score = this.score_of_previous_round + (this.cells[bestTree.tree[0] * this.cellI + 1]
+                        * this.complete_mul * nbr_of_trees.size_3 * Math.exp(this.cells[bestTree.tree[0]*this.cellI+8])) / this.iter;
+                    if(this.rday >= this.change_commplete_day){
+                        score = this.score_of_previous_round + (this.cells[bestTree.tree[0]*this.cellI+1] * this.complete_mul
+                            * 50) / this.iter;
+                    }
+                    actions_score.push({
+                        play_index: this.play_index,
+                        //score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.complete_mul * this.cells[bestTree.tree.cellIndex].sun_potential,
+                        score: score,
+                        action: COMPLETE,
+                        targetIndex: bestTree.tree[0],
+                        sourceIndex: -1,
+                    });
+                }
             }
         }
 
@@ -231,26 +229,26 @@ class RoundAnalyse {
                 }
                 if(bestTree.tree === -1) {
                     for (let i = 0; i < this.trees.length; i += this.treeI) {
-                    if (this.trees[i+2] && this.trees[i+1] > 1 && !this.trees[i+3]){
-                        let cells_to_check = [this.trees[i]];
-                        for (let j = 0; j < this.trees[i+1]; j++) {
-                            let new_cells = [];
-                            cells_to_check.forEach(cell =>{
-                                this.cells.slice(cell * this.cellI + 2, cell * this.cellI + 8).forEach(spot => {
-                                    if (spot !== -1 ){
-                                        new_cells.push(spot);
-                                        if (this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1] < bestTree.score && this.cells[spot * this.cellI + 1] > 0 && !this.isOccupied(spot)){
-                                            bestTree.score = this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1];
-                                            bestTree.tree = this.trees.slice(i, i+this.treeI);
-                                            bestTree.spot = spot;
+                        if (this.trees[i+2] && this.trees[i+1] > 1 && !this.trees[i+3]){
+                            let cells_to_check = [this.trees[i]];
+                            for (let j = 0; j < this.trees[i+1]; j++) {
+                                let new_cells = [];
+                                cells_to_check.forEach(cell =>{
+                                    this.cells.slice(cell * this.cellI + 2, cell * this.cellI + 8).forEach(spot => {
+                                        if (spot !== -1 ){
+                                            new_cells.push(spot);
+                                            if (this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1] < bestTree.score && this.cells[spot * this.cellI + 1] > 0 && !this.isOccupied(spot)){
+                                                bestTree.score = this.cells[spot * this.cellI + 8] / this.cells[spot * this.cellI + 1];
+                                                bestTree.tree = this.trees.slice(i, i+this.treeI);
+                                                bestTree.spot = spot;
+                                            }
                                         }
-                                    }
+                                    });
                                 });
-                            });
-                            cells_to_check = new_cells;
+                                cells_to_check = new_cells;
+                            }
                         }
                     }
-                }
                 }
                 if (bestTree.tree !== -1){
                     actions_score.push({
@@ -270,69 +268,69 @@ class RoundAnalyse {
         if (this.sun >= 1 && nbr_of_trees.total > nbr_of_trees.size_3){
             if(this.play_index === -1){
                 for (let i = 0; i < this.trees.length; i += this.treeI) {
-                if (this.rday <= 20 + this.trees[i+1] && this.trees[i+1] < 3 && this.trees[i+2] && !this.trees[i+3]){
-                    let needed_sun;
-                    switch (this.trees[i+1]) {
-                        case 0:
-                            needed_sun = 1 + nbr_of_trees.size_1;
-                            break;
-                        case 1:
-                            needed_sun = 3 + nbr_of_trees.size_2;
-                            break;
-                        case 2:
-                            needed_sun = 7 + nbr_of_trees.size_3;
-                            break;
-                    }
-                    if (this.sun >= needed_sun){
-                        actions_score.push({
-                        play_index: this.play_index,
-                        score: this.score_of_previous_round +
-                            (this.cells[this.trees[i] * this.cellI + 1] * this.grow_mul[this.trees[i+1]] / this.cells[this.trees[i] * this.cellI + 8])/this.iter,
-                        action: GROW,
-                        targetIndex: this.trees[i],
-                        sourceIndex: -1,
-                    });
+                    if (this.rday <= 20 + this.trees[i+1] && this.trees[i+1] < 3 && this.trees[i+2] && !this.trees[i+3]){
+                        let needed_sun;
+                        switch (this.trees[i+1]) {
+                            case 0:
+                                needed_sun = 1 + nbr_of_trees.size_1;
+                                break;
+                            case 1:
+                                needed_sun = 3 + nbr_of_trees.size_2;
+                                break;
+                            case 2:
+                                needed_sun = 7 + nbr_of_trees.size_3;
+                                break;
+                        }
+                        if (this.sun >= needed_sun){
+                            actions_score.push({
+                                play_index: this.play_index,
+                                score: this.score_of_previous_round +
+                                    (this.cells[this.trees[i] * this.cellI + 1] * this.grow_mul[this.trees[i+1]] / this.cells[this.trees[i] * this.cellI + 8])/this.iter,
+                                action: GROW,
+                                targetIndex: this.trees[i],
+                                sourceIndex: -1,
+                            });
+                        }
                     }
                 }
-            }
             }else{
-            const bestTree = {
-                score:[9999, 9999, 9999],
-                tree:[-1, -1, -1],
-            }
-            for (let i = 0; i < this.trees.length; i += this.treeI) {
-                if (this.rday <= 20 + this.trees[i+1] && this.trees[i+1] < 3 && this.trees[i+2] && !this.trees[i+3] && this.cells[this.trees[i] * this.cellI + 8] / this.cells[this.trees[i] * this.cellI + 1] < bestTree.score[this.trees[i+1]]){
-                    let needed_sun;
-                    switch (this.trees[i+1]) {
-                        case 0:
-                            needed_sun = 1 + nbr_of_trees.size_1;
-                            break;
-                        case 1:
-                            needed_sun = 3 + nbr_of_trees.size_2;
-                            break;
-                        case 2:
-                            needed_sun = 7 + nbr_of_trees.size_3;
-                            break;
-                    }
-                    if (this.sun >= needed_sun){
-                        bestTree.score[this.trees[i+1]] = this.cells[this.trees[i] * this.cellI + 8] / this.cells[this.trees[i] * this.cellI + 1];
-                        bestTree.tree[this.trees[i+1]] = this.trees.slice(i,i+this.treeI);
+                const bestTree = {
+                    score:[9999, 9999, 9999],
+                    tree:[-1, -1, -1],
+                }
+                for (let i = 0; i < this.trees.length; i += this.treeI) {
+                    if (this.rday <= 20 + this.trees[i+1] && this.trees[i+1] < 3 && this.trees[i+2] && !this.trees[i+3] && this.cells[this.trees[i] * this.cellI + 8] / this.cells[this.trees[i] * this.cellI + 1] < bestTree.score[this.trees[i+1]]){
+                        let needed_sun;
+                        switch (this.trees[i+1]) {
+                            case 0:
+                                needed_sun = 1 + nbr_of_trees.size_1;
+                                break;
+                            case 1:
+                                needed_sun = 3 + nbr_of_trees.size_2;
+                                break;
+                            case 2:
+                                needed_sun = 7 + nbr_of_trees.size_3;
+                                break;
+                        }
+                        if (this.sun >= needed_sun){
+                            bestTree.score[this.trees[i+1]] = this.cells[this.trees[i] * this.cellI + 8] / this.cells[this.trees[i] * this.cellI + 1];
+                            bestTree.tree[this.trees[i+1]] = this.trees.slice(i,i+this.treeI);
+                        }
                     }
                 }
-            }
-            for (let i = 0 ; i< 3; i++){
-                if(bestTree.tree[i] !== -1){
-                    actions_score.push({
-                        play_index: this.play_index,
-                        score: this.score_of_previous_round +
-                            (this.cells[bestTree.tree[i][0] * this.cellI + 1] * this.grow_mul[bestTree.tree[i][1]] / this.cells[bestTree.tree[i][0] * this.cellI + 8])/this.iter,
-                        //score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.grow_mul[bestTree.tree.size],
-                        action: GROW,
-                        targetIndex: bestTree.tree[i][0],
-                        sourceIndex: -1,
-                    });
+                for (let i = 0 ; i< 3; i++){
+                    if(bestTree.tree[i] !== -1){
+                        actions_score.push({
+                            play_index: this.play_index,
+                            score: this.score_of_previous_round +
+                                (this.cells[bestTree.tree[i][0] * this.cellI + 1] * this.grow_mul[bestTree.tree[i][1]] / this.cells[bestTree.tree[i][0] * this.cellI + 8])/this.iter,
+                            //score: this.score_of_previous_round + this.cells[bestTree.tree.cellIndex].richness * this.grow_mul[bestTree.tree.size],
+                            action: GROW,
+                            targetIndex: bestTree.tree[i][0],
+                            sourceIndex: -1,
+                        });
+                    }
                 }
-            }
             }
         }
 
